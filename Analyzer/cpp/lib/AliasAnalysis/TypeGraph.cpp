@@ -5,9 +5,9 @@
 
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DebugInfoMetadata.h"
-#include "llvm/BinaryFormat/Dwarf.h"
 
 #include <fstream>
+#include <iostream>
 
 using namespace std;
 using namespace llvm;
@@ -17,6 +17,7 @@ using namespace llvm;
  */
 
 TypeNode::TypeNode(string type_name) {
+	this->node_type == TypeNode::NodeType::Default;
 	this->type_name = type_name;
 	this->aliased_type_names.clear();
 	this->val_set.clear();
@@ -28,6 +29,30 @@ TypeNode::TypeNode(string type_name) {
 
 TypeNode::~TypeNode() {
 	// Need to do nothing at present.
+}
+
+void TypeNode::setNodeType(TypeNode::NodeType node_type) {
+	this->node_type = node_type;
+}
+
+void TypeNode::updateTypeName(string new_type_name) {
+	this->type_name = new_type_name;
+}
+
+string TypeNode::getTypeName() {
+	return this->type_name;
+}
+
+bool TypeNode::isBasic() {
+	return this->node_type == TypeNode::NodeType::Basic;
+}
+
+bool TypeNode::isComposite() {
+	return this->node_type == TypeNode::NodeType::Composite;
+}
+
+bool TypeNode::isDerived() {
+	return this->node_type == TypeNode::NodeType::Derived;
 }
 
 void TypeNode::pushTypeName(string type_name) {
@@ -108,13 +133,21 @@ string TypeEdge::getField() {
 
 string TypeEdge::toDotEdge(size_t src_id, size_t dst_id) {
 	string edge_str;
+	string offset_str;
+	if (offset == REF_OFFSET) {
+		offset_str = "ref";
+	} else if (offset == GEP_OFFSET) {
+		offset_str = "gep";
+	} else {
+		offset_str = to_string(offset);
+	}
 
 	edge_str += "node" + to_string(src_id);
 	edge_str += " -> ";
 	edge_str += "node" + to_string(dst_id);
 
 	edge_str += " [label=\"";
-	edge_str += to_string(offset);
+	edge_str += offset_str;
 	edge_str += " : ";
 	edge_str += field;
 	edge_str += "\"]";
@@ -145,60 +178,84 @@ TypeGraph::~TypeGraph() {
 	}
 }
 
-TypeNode *TypeGraph::getOrCreateTypeNode(DIType *ditype) {
-	auto ditype_find = ditype2node.find(ditype);
-	if (ditype_find != ditype2node.end()) {
-		return ditype_find->second;
+string TypeGraph::getTagStr(dwarf::Tag ditype_tag) {
+	return dwarf::TagString(ditype_tag).str();
+}
+
+string TypeGraph::getTagStr(DIType *ditype) {
+	auto ditype_tag = ditype->getTag();
+	return dwarf::TagString(ditype_tag).str();
+}
+
+TypeNode *TypeGraph::createTypeNode(DIType *ditype) {
+	string name = "@Non";
+	auto name_ref = ditype->getName();
+	if (!name_ref.empty()) {
+		name = name_ref;
 	} else {
-		string name = "@Non";
-		auto name_ref = ditype->getName();
-		if (!name_ref.empty()) {
-			name = name_ref;
-		} else {
-			DIType *tmp_ditype = ditype;
-			string tmp_name = "";
-			while (true) {
-				DIDerivedType *derived_ditype = dyn_cast<DIDerivedType>(tmp_ditype);
-				if (derived_ditype == NULL) {
-					auto name_ref = tmp_ditype->getName();
-					if (!name_ref.empty()) {
-						tmp_name = tmp_name + name_ref.str();
-					} else {
-						tmp_name = "";
-					}
-					break;
-				}
-				auto tag = derived_ditype->getTag();
-				if (tag == dwarf::Tag::DW_TAG_pointer_type) {
-					tmp_name = tmp_name + "*";
-					tmp_ditype = derived_ditype->getBaseType();
-				} else {
-					auto name_ref = tmp_ditype->getName();
-					if (!name_ref.empty()) {
-						tmp_name = tmp_name + name_ref.str();
-					} else {
-						tmp_name = "";
-					}
-					break;
-				}
+		DIType *tmp_ditype = ditype;
+		string tmp_name = "";
+		while (true) {
+			if (tmp_ditype == NULL) {
+				tmp_name = "";
+				break;
 			}
-			if (tmp_name != "") {
-				name = tmp_name;
+			DIDerivedType *derived_ditype = dyn_cast<DIDerivedType>(tmp_ditype);
+			if (derived_ditype == NULL) {
+				auto name_ref = tmp_ditype->getName();
+				if (!name_ref.empty()) {
+					tmp_name = tmp_name + name_ref.str();
+				} else {
+					tmp_name = "";
+				}
+				break;
+			}
+			auto tag = derived_ditype->getTag();
+			if (tag == dwarf::Tag::DW_TAG_pointer_type) {
+				tmp_name = tmp_name + "*";
+				tmp_ditype = derived_ditype->getBaseType();
+			} else {
+				auto name_ref = tmp_ditype->getName();
+				if (!name_ref.empty()) {
+					tmp_name = tmp_name + name_ref.str();
+				} else {
+					tmp_name = "";
+				}
+				break;
 			}
 		}
-		TypeNode *new_tynode= new TypeNode(name);
-		tynode_set.insert(new_tynode);
-		ditype2node[ditype] = new_tynode;
-		return new_tynode;
+		if (tmp_name != "") {
+			name = tmp_name;
+		}
+	}
+	TypeNode *new_tynode= new TypeNode(name);
+	if (isa<DIBasicType>(ditype)) {
+		new_tynode->setNodeType(TypeNode::NodeType::Basic);
+	}
+	tynode_set.insert(new_tynode);
+	ditype2node[ditype] = new_tynode;
+	return new_tynode;
+}
+
+TypeNode *TypeGraph::getTypeNode(DIType *ditype) {
+	auto tynode_finder = ditype2node.find(ditype);
+	if (tynode_finder != ditype2node.end()) {
+		return tynode_finder->second;
+	} else {
+		spdlog::error("TypeGraph::getTypeNode: No TypeNode found for Tag {}",
+					getTagStr(ditype));
+		return NULL;
 	}
 }
 
-TypeEdge *TypeGraph::createTypeEdge(TypeNode *src, TypeNode *dst, int offset, string field) {
+void TypeGraph::createTypeEdge(TypeNode *src, TypeNode *dst, int offset, string field) {
+	if (dst->isBasic()) {
+		return;
+	}
 	TypeEdge *new_tyedge = new TypeEdge(src, dst, offset, field);
 	src->addOutEdge(offset, field, new_tyedge);
 	dst->addInEdge(offset, field, new_tyedge);
 	tyedge_set.insert(new_tyedge);
-	return new_tyedge;
 }
 
 void TypeGraph::handleDIElements(TypeNode *base_tynode, DINodeArray &elem_array) {
@@ -208,17 +265,17 @@ void TypeGraph::handleDIElements(TypeNode *base_tynode, DINodeArray &elem_array)
 		auto elem_tag = derived_ditype->getTag();
 		if (derived_ditype == NULL) {
 			spdlog::error("TypeGraph::handleDIElements: Not derived type {}",
-						dwarf::TagString(elem_tag));
+						getTagStr(elem_tag));
 			break;
 		}
 		if (elem_tag != dwarf::Tag::DW_TAG_member) {
 			spdlog::error("TypeGraph::handleDIElements: TAG mismatch {}",
-						dwarf::TagString(elem_tag));
+						getTagStr(elem_tag));
 			break;
 		}
 		string field = derived_ditype->getName().str();
 		DIType *elem_ditype = derived_ditype->getBaseType();
-		TypeNode *elem_tynode = getOrCreateTypeNode(elem_ditype);
+		TypeNode *elem_tynode = getTypeNode(elem_ditype);
 		createTypeEdge(base_tynode, elem_tynode, offset, field);
 		offset++;
 	}
@@ -226,34 +283,47 @@ void TypeGraph::handleDIElements(TypeNode *base_tynode, DINodeArray &elem_array)
 
 void TypeGraph::handleDICompositeType(DICompositeType *composite_ditype) {	
 	auto composite_tag = composite_ditype->getTag();
-	TypeNode *base_tynode = getOrCreateTypeNode(composite_ditype);
+	TypeNode *base_tynode = getTypeNode(composite_ditype);
 	auto elem_array = composite_ditype->getElements();
 
 	switch (composite_tag) {
-		case dwarf::Tag::DW_TAG_structure_type:
-			handleDIElements(base_tynode, elem_array);
+		case dwarf::Tag::DW_TAG_const_type:
+		case dwarf::Tag::DW_TAG_array_type:
+		case dwarf::Tag::DW_TAG_volatile_type:
+		case dwarf::Tag::DW_TAG_enumeration_type:
 			break;
+		case dwarf::Tag::DW_TAG_structure_type:
 		case dwarf::Tag::DW_TAG_union_type:
-			// TODO: Handle Union
+			handleDIElements(base_tynode, elem_array);
 			break;
 		default:
 			spdlog::warn("TypeGraph::handleDICompositeType: Unhandled DW_TAG {}", 
-						dwarf::TagString(composite_tag));			
+						getTagStr(composite_tag));			
 			break;
 	}
 	 
 }
 
 void TypeGraph::handleDIPointerType(DIDerivedType *pointer_ditype) {
-	TypeNode *pointer_tynode = getOrCreateTypeNode(pointer_ditype);
-	TypeNode *val_tynode = getOrCreateTypeNode(pointer_ditype->getBaseType());
+	TypeNode *pointer_tynode = getTypeNode(pointer_ditype);
+	if (pointer_ditype->getBaseType() == NULL) {
+		// TODO: Handle baseType: null;
+		pointer_tynode->setNodeType(TypeNode::NodeType::Basic);
+		pointer_tynode->updateTypeName("void");
+		return;
+	}
+	TypeNode *val_tynode = getTypeNode(pointer_ditype->getBaseType());
 	int offset = REF_OFFSET;
 	string field = "*";
-	TypeEdge *tyedge = createTypeEdge(pointer_tynode, val_tynode, offset, field);
+	createTypeEdge(pointer_tynode, val_tynode, offset, field);
 }
 
 void TypeGraph::handleDITypedef(DIDerivedType *typedef_ditype) {
-	TypeNode *base_tynode = getOrCreateTypeNode(typedef_ditype->getBaseType());
+	DIType *base_ditype = typedef_ditype->getBaseType();
+	if (base_ditype->getTag() == dwarf::Tag::DW_TAG_typedef) {
+		handleDITypedef(dyn_cast<DIDerivedType>(base_ditype));
+	}
+	TypeNode *base_tynode = getTypeNode(base_ditype);
 	string type_name = typedef_ditype->getName().str();
 	base_tynode->pushTypeName(type_name);
 	ditype2node[typedef_ditype] = base_tynode;
@@ -261,24 +331,50 @@ void TypeGraph::handleDITypedef(DIDerivedType *typedef_ditype) {
 
 void TypeGraph::handleDIDerivedType(DIDerivedType *derived_ditype) {
 	auto derived_tag = derived_ditype->getTag();
-	TypeNode *base_tynode = getOrCreateTypeNode(derived_ditype);
 	switch (derived_tag) {
 		case dwarf::Tag::DW_TAG_member:
+		case dwarf::Tag::DW_TAG_typedef:
+		case dwarf::Tag::DW_TAG_const_type:
+		case dwarf::Tag::DW_TAG_array_type:
+		case dwarf::Tag::DW_TAG_volatile_type:
 			break;
 		case dwarf::Tag::DW_TAG_pointer_type:
 			handleDIPointerType(derived_ditype);
 			break;
-		case dwarf::Tag::DW_TAG_typedef:
-			handleDITypedef(derived_ditype);
-			break;
 		default:
 			spdlog::warn("TypeGraph::handleDIDerivedType: Unhandled DW_TAG {}",
-						dwarf::TagString(derived_tag));
+						getTagStr(derived_tag));
 	}
 }
 
+void TypeGraph::handleDISubroutineType(DISubroutineType *subroutine_ditype) {
+	auto arg_array = subroutine_ditype->getTypeArray();
+	string sub_type_name = "";
+	TypeNode *sub_tynode = getTypeNode(subroutine_ditype);
+	int arg_idx = -1;
+	for (auto arg : arg_array) {
+		string type_name;
+		if (arg == NULL) {
+			type_name = "void";
+		} else {
+			TypeNode *arg_tynode = getTypeNode(arg);
+			type_name = arg_tynode->getTypeName();
+		}
+		if (arg_idx == -1) {
+			sub_type_name = type_name + "(";
+		} else if (arg_idx == 0) {
+			sub_type_name = sub_type_name + type_name;
+		} else {
+			sub_type_name = sub_type_name + ", " + type_name;
+		}
+		arg_idx++;
+	}
+	sub_type_name = sub_type_name + ")";
+	sub_tynode->updateTypeName(sub_type_name);
+}
+
 void TypeGraph::handleDIBasicType(DIBasicType *basic_ditype) {
-	TypeNode *basic_tynode = getOrCreateTypeNode(basic_ditype);
+	TypeNode *basic_tynode = getTypeNode(basic_ditype);
 }
 
 void TypeGraph::handleDIType(DIType *ditype) {
@@ -286,6 +382,8 @@ void TypeGraph::handleDIType(DIType *ditype) {
 		handleDICompositeType(compose_ditype);
 	} else if (DIDerivedType *derived_ditype = dyn_cast<DIDerivedType>(ditype)) {
 		handleDIDerivedType(derived_ditype);
+	} else if (DISubroutineType *subroutine_ditype = dyn_cast<DISubroutineType>(ditype)) {
+		handleDISubroutineType(subroutine_ditype);
 	} else if (DIBasicType *basic_ditype = dyn_cast<DIBasicType>(ditype)) {
 		handleDIBasicType(basic_ditype);
 	}
@@ -295,14 +393,43 @@ void TypeGraph::handleMod(Module *mod) {
 	DebugInfoFinder finder;
 	finder.processModule(*mod);
 	for (auto ditype : finder.types()) {
+		auto ditype_tag = ditype->getTag();
+		switch (ditype_tag) {
+			case dwarf::Tag::DW_TAG_member:
+			case dwarf::Tag::DW_TAG_typedef:
+				break;
+			case dwarf::Tag::DW_TAG_pointer_type:
+			case dwarf::Tag::DW_TAG_structure_type:
+			case dwarf::Tag::DW_TAG_base_type:
+			case dwarf::Tag::DW_TAG_union_type:
+			case dwarf::Tag::DW_TAG_array_type:
+			case dwarf::Tag::DW_TAG_const_type:
+			case dwarf::Tag::DW_TAG_enumeration_type:
+			case dwarf::Tag::DW_TAG_volatile_type:
+			case dwarf::Tag::DW_TAG_subroutine_type:
+				createTypeNode(ditype);
+				break;
+			default:
+				spdlog::warn("TypeGraph::handleMod: Unhandled DW_TAG {}",
+						getTagStr(ditype_tag));
+				break;
+		}
+	}
+	for (auto ditype : finder.types()) {
+		auto ditype_tag = ditype->getTag();
+		if (ditype_tag == dwarf::Tag::DW_TAG_typedef) {
+			handleDITypedef(dyn_cast<DIDerivedType>(ditype));	
+		}
+	}
+	for (auto ditype : finder.types()) {
 		handleDIType(ditype);
 	}
 }
 
 void TypeGraph::analyze() {
 	for (size_t mod_i = 0 ; mod_i < mod_pack->getNumMgrs(); mod_i++) {
-		ModMgr *mod_mgr = mod_pack->getMgr(mod_i);
-		Module *mod = mod_mgr->getMod();
+		analyzing_mod_mgr = mod_pack->getMgr(mod_i);
+		Module *mod = analyzing_mod_mgr->getMod();
 		handleMod(mod);
 	}
 }
@@ -323,6 +450,9 @@ void TypeGraph::dumpDot(string dot_file) {
 	size_t id = 0;
 
 	for (auto tynode : tynode_set) {
+		if (tynode->isBasic()) {
+			continue;
+		}
 		tynode_id[tynode] = id;
 		ofs << tynode->toDotNode(id) << "\n";
 		id++;
@@ -331,6 +461,9 @@ void TypeGraph::dumpDot(string dot_file) {
 	for (auto tyedge : tyedge_set) {
 		TypeNode *src = tyedge->getSrc();
 		TypeNode *dst = tyedge->getDst();
+		if (dst->isBasic()) {
+			continue;
+		}
 
 		ofs << tyedge->toDotEdge(
 			tynode_id[src],
