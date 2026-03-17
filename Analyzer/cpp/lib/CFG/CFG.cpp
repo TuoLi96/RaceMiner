@@ -13,8 +13,11 @@ using namespace llvm;
  */
 
 CFGNode::CFGNode(Instruction *inst, CFGNode::NodeType node_type) {
-	this->node_type = node_type;
+	this->inst = inst;
 	this->line = getLine(inst);
+	this->node_type = node_type;
+	this->in_edges.clear();
+	this->out_edges.clear();
 }
 
 CFGNode::~CFGNode() {
@@ -22,7 +25,7 @@ CFGNode::~CFGNode() {
 }
 
 int CFGNode::getLine(Instruction *inst) {
-	if (auto dbg_loc = inst->getDebugLoc()) {
+	if (auto &dbg_loc = inst->getDebugLoc()) {
 		return dbg_loc.getLine();
 	}
 	if (auto *alloca_inst = dyn_cast<AllocaInst>(inst)) {
@@ -37,13 +40,13 @@ int CFGNode::getLine(Instruction *inst) {
 	}
 	for (auto *prev_inst = inst->getPrevNode(); 
 				prev_inst; prev_inst = prev_inst->getPrevNode()) {
-		if (auto dbg_loc = prev_inst->getDebugLoc()) {
+		if (auto &dbg_loc = prev_inst->getDebugLoc()) {
 			return dbg_loc.getLine();
 		}
 	}
-	for (auto *succ_inst = inst->getNextNode();
-				succ_inst; succ_inst = succ_inst->getNextNode()) {
-		if (auto dbg_loc = succ_inst->getDebugLoc()) {
+	for (auto *next_inst = inst->getNextNode();
+				next_inst; next_inst = next_inst->getNextNode()) {
+		if (auto &dbg_loc = next_inst->getDebugLoc()) {
 			return dbg_loc.getLine();
 		}
 	}
@@ -52,6 +55,10 @@ int CFGNode::getLine(Instruction *inst) {
 
 Instruction *CFGNode::getInst() {
 	return inst;
+}
+
+int CFGNode::getLine() {
+	return line;
 }
 
 CFGNode::NodeType CFGNode::getNodeType() {
@@ -109,6 +116,9 @@ CFGNode *CFGEdge::getDst() {
 	return dst;
 }
 
+CFGEdge::EdgeType CFGEdge::getEdgeType() {
+	return edge_type;
+}
 
 /*
  * Implementation of CFG
@@ -118,13 +128,14 @@ CFG::CFG() {
 	node_set.clear();
 	edge_set.clear();
 	inst2node.clear();
+	entry_vec.clear();
 }
 
 CFG::~CFG() {
-	for (auto node : node_set) {
+	for (auto &node : node_set) {
 		delete node;
 	}
-	for (auto edge : edge_set) {
+	for (auto &edge : edge_set) {
 		delete edge;
 	}
 }
@@ -142,11 +153,18 @@ set<CFGNode *> CFG::getSuccs(CFGNode *src_node, bool is_intra) {
 		} else {
 			result.insert(node);
 		}
-		if (node->getNodeType() == CFGNode::NodeType::FuncExit && is_intra) {
-			continue;
-		}
 		for (int out_idx = 0; out_idx < node->getNumOuts(); out_idx++) {
-			worklist.push(node->getOutNode(out_idx));
+			if (!is_intra) {
+				worklist.push(node->getOutNode(out_idx));
+				continue;
+			}
+			CFGEdge *out_edge = node->getOutEdge(out_idx);
+			// TODO: This condition should be rechecked carefully for intra-CFG.
+			if (out_edge->getEdgeType() == CFGEdge::EdgeType::Ret ||
+					out_edge->getEdgeType() == CFGEdge::EdgeType::Call) {
+				continue;
+			}
+			worklist.push(out_edge->getDst());
 		}
 	}
 	return result;
@@ -165,11 +183,18 @@ set<CFGNode *> CFG::getPreds(CFGNode *dst_node, bool is_intra) {
 		} else {
 			result.insert(node);
 		}
-		if (node->getNodeType() == CFGNode::NodeType::FuncEntry && is_intra) {
-			continue;
-		}
 		for (int in_idx = 0; in_idx < node->getNumIns(); in_idx++) {
-			worklist.push(node->getInNode(in_idx));
+			if (!is_intra) {
+				worklist.push(node->getInNode(in_idx));
+				continue;
+			}
+			CFGEdge *in_edge = node->getInEdge(in_idx);
+			// TODO: This condition should be rechecked carefully for intra-CFG.
+			if (in_edge->getEdgeType() == CFGEdge::EdgeType::Ret ||
+					in_edge->getEdgeType() == CFGEdge::EdgeType::Call) {
+				continue;
+			}
+			worklist.push(in_edge->getSrc());
 		}
 	}
 	return result;

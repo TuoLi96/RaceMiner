@@ -11,6 +11,7 @@ using namespace llvm;
 
 IntraCFG::IntraCFG(ModPack *mod_pack) {
 	this->mod_pack = mod_pack;
+	this->analyzing_mod_mgr = NULL;
 }
 
 IntraCFG::~IntraCFG() {
@@ -63,14 +64,13 @@ void IntraCFG::createEdgeForBlock(BasicBlock &blk) {
 	auto blk_succ_iter = blk.begin();
 	blk_succ_iter++;
 	for (; blk_succ_iter != blk.end(); blk_succ_iter++) {
+		// FIXME: If the first instruction is dbg?
 		Instruction *cur_inst = &(*blk_iter);
 		Instruction *succ_inst = &(*blk_succ_iter);
 		if (isa<DbgInfoIntrinsic>(succ_inst)) {
 			continue;
 		}
-
 		createCFGEdge(cur_inst, succ_inst, CFGEdge::EdgeType::Block);
-
 		blk_iter = blk_succ_iter;
 	}
 	Instruction *term_inst = blk.getTerminator();
