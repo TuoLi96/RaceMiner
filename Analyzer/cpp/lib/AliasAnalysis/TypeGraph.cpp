@@ -40,7 +40,14 @@ void TypeNode::updateTypeName(string new_type_name) {
 }
 
 string TypeNode::getTypeName() {
-	return this->type_name;
+	if (type_name != "") {
+		return type_name;
+	} else if (!aliased_type_names.empty()) {
+		// Note: Return the first aliased type name.
+		return aliased_type_names[0];
+	} else {
+		return "@Non";
+	}
 }
 
 bool TypeNode::isBasic() {
@@ -188,7 +195,7 @@ string TypeGraph::getTagStr(DIType *ditype) {
 }
 
 TypeNode *TypeGraph::createTypeNode(DIType *ditype) {
-	string name = "@Non";
+	string name = "";
 	auto name_ref = ditype->getName();
 	if (!name_ref.empty()) {
 		name = name_ref;

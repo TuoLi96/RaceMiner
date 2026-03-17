@@ -29,9 +29,6 @@ Module *ModMgr::getMod() {
 string ModMgr::getRawMetadata(Metadata *metadata) {
 	string meta_str;
 	llvm::raw_string_ostream raw_meta_str(meta_str);
-	if (metadata == NULL) {
-		cout << "11111111" << endl;
-	}
 	metadata->print(raw_meta_str, *mst);
 	raw_meta_str.flush();
 	return meta_str;
