@@ -9,7 +9,7 @@ LockRuleMiner::LockRuleMiner(ModPack *mod_pack) {
 }
 
 LockRuleMiner::~LockRuleMiner() {
-	// Need to do nothing at present.
+	delete cfg;
 }
 
 void LockRuleMiner::handleFunc(Function *func) {
@@ -23,6 +23,7 @@ void LockRuleMiner::handleMod(Module *mod) {
 }
 
 void LockRuleMiner::analyzer() {
+	this->cfg = new IntraCFG(mod_pack);
 	for (int mgr_idx = 0; mgr_idx < mod_pack->getNumMgrs(); mgr_idx++) {
 		analyzing_mod_mgr = mod_pack->getMgr(mgr_idx);
 		Module *mod = analyzing_mod_mgr->getMod();

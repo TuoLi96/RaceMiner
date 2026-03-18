@@ -8,6 +8,8 @@ find_package(spdlog REQUIRED)
 
 add_library(AliasAnalysis
     TypeGraph.cpp
+	AliasGraph.cpp
+	Steensgaard.cpp
 )
 
 target_link_libraries(AliasAnalysis

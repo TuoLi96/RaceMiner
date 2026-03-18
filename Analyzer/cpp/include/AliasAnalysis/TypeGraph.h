@@ -77,12 +77,9 @@ public:
 	TypeGraph(ModPack *mod_pack);
 	~TypeGraph();
 
-	void dumpDot(std::string dot_name);
-	void dumpSvg(std::string svg_name);
-
 private:
-	std::string getTagStr(llvm::dwarf::Tag ditype_tag);
-	std::string getTagStr(llvm::DIType *type);
+	std::string getTagStr(llvm::dwarf::Tag ditype_tag);		// Debug at present.
+	std::string getTagStr(llvm::DIType *type);				// Debug at present
 	TypeNode *createTypeNode(llvm::DIType *ditype);
 	TypeNode *getTypeNode(llvm::DIType *ditype);
 	void createTypeEdge(TypeNode *src, TypeNode *dst, int offset, std::string field);
@@ -98,6 +95,8 @@ private:
 
 public:
 	void analyze();
+	void dumpDot(std::string dot_name);
+	void dumpSvg(std::string svg_name);
 };
 
 #endif
