@@ -70,6 +70,8 @@ public:
 	AGNode *getAGNode(llvm::Value *val);
 	void compact(UnionFind<AGNode *> &uf);
 	virtual void build() = 0;
+
+	bool isAlias(llvm::Value *val1, llvm::Value *val2);
 };
 
 #endif

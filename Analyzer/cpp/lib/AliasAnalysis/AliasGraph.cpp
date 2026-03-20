@@ -181,3 +181,9 @@ void AliasGraph::compact(UnionFind<AGNode *> &uf) {
 		delete old_agedge;
 	}
 }
+
+bool AliasGraph::isAlias(Value *val1, Value *val2) {
+	AGNode *agnode1 = getAGNode(val1);
+	AGNode *agnode2 = getAGNode(val2);
+	return agnode1 == agnode2;
+}

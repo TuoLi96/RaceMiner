@@ -100,6 +100,9 @@ void Steensgaard::handleLoad(LoadInst *load_inst) {
 void Steensgaard::handleStore(StoreInst *store_inst) {
 	Value *pointer = store_inst->getOperand(1);
 	Value *val = store_inst->getOperand(0);
+	if (isa<Constant>(val)) {
+		return;
+	}
 	AGNode *pointer_node = getAGNode(pointer);
 	AGNode *val_node = getAGNode(val);
 	AGNode *succ_node = pointer_node->getOutNodeByOffset(REF_OFFSET);
@@ -132,6 +135,9 @@ void Steensgaard::handleGep(GetElementPtrInst *gep_inst) {
 
 void Steensgaard::handleCast(BitCastInst *cast_inst) {
 	Value *ori_val = cast_inst->getOperand(0);
+	if (isa<Constant>(ori_val)) {
+		return;
+	}
 	Value *tar_val = cast_inst;
 	AGNode *ori_node = getAGNode(ori_val);
 	AGNode *tar_node = getAGNode(tar_val);

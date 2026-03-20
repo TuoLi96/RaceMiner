@@ -1,6 +1,14 @@
 #ifndef _LOCK_API_H_
 #define _LOCK_API_H_
 
+#include <map>
+#include <string>
+
+#include "llvm/IR/Instructions.h"
+
+#include "Manager/PathMgr/PathMgr.h"
+#include "AliasAnalysis/AliasGraph.h"
+
 class LockAPI {
 private:
 	PathMgr *path_mgr;
@@ -12,7 +20,7 @@ private:
 	std::map<std::string, int> unlock_val_map;
 
 public:
-	LockAPI(AliasGraph *ag);
+	LockAPI(PathMgr *path_mgr, AliasGraph *ag);
 	~LockAPI();
 
 private:
@@ -21,8 +29,8 @@ private:
 public:
 	bool isLock(llvm::CallInst *call_inst);
 	llvm::Value *getLockVal(llvm::CallInst *lock_call_inst);
-	bool isUnlock(llvm::CallInst *lock_call_inst);
-	llvm::Value *getUnlockVal(llvm::CallInst *call_inst);
+	bool isUnlock(llvm::CallInst *call_inst);
+	llvm::Value *getUnlockVal(llvm::CallInst *unlock_call_inst);
 
 	bool isLockPair(llvm::CallInst *lock_call_inst1, llvm::CallInst *unlock_call_inst2);
 };
