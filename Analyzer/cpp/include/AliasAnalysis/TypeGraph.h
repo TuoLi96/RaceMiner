@@ -9,8 +9,8 @@
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/BinaryFormat/Dwarf.h"
 
-#include "ModMgr/ModMgr.h"
-#include "ModMgr/ModPack.h"
+#include "Manager/ModMgr/ModMgr.h"
+#include "Manager/ModMgr/ModPack.h"
 
 class TypeEdge;
 

@@ -2,7 +2,7 @@
 #include <iostream>
 #include <string>
 
-#include "ModMgr/ModPack.h"
+#include "Manager/ModMgr/ModPack.h"
 #include "AliasAnalysis/TypeGraph.h"
 
 using namespace std;

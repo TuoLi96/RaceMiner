@@ -6,7 +6,7 @@
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Instructions.h"
 
-#include "ModMgr/ModPack.h"
+#include "Manager/ModMgr/ModPack.h"
 #include "AliasAnalysis/AliasGraph.h"
 #include "Utils/UnionFind.h"
 

@@ -1,3 +1,4 @@
 add_subdirectory(AliasAnalysis)
 add_subdirectory(CFG)
-add_subdirectory(ModMgr)
+add_subdirectory(Manager)
+#add_subdirectory(Concurrency)

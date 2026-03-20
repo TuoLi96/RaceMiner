@@ -6,8 +6,8 @@
 #include "llvm/IR/BasicBlock.h"
 
 #include "CFG/CFG.h"
-#include "ModMgr/ModMgr.h"
-#include "ModMgr/ModPack.h"
+#include "Manager/ModMgr/ModMgr.h"
+#include "Manager/ModMgr/ModPack.h"
 
 class IntraCFG : CFG {
 private:
