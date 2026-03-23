@@ -32,7 +32,9 @@ public:
 	bool isUnlock(llvm::CallInst *call_inst);
 	llvm::Value *getUnlockVal(llvm::CallInst *unlock_call_inst);
 
-	bool isLockPair(llvm::CallInst *lock_call_inst1, llvm::CallInst *unlock_call_inst2);
+	bool isLockPair(llvm::CallInst *lock_call_inst, llvm::CallInst *unlock_call_inst);
+	bool isSameLock(llvm::CallInst *lock_call_inst1, llvm::CallInst *lock_call_inst2);
+	bool isSameUnlock(llvm::CallInst *unlock_call_inst1, llvm::CallInst *unlock_call_inst2);
 };
 
 #endif

@@ -38,11 +38,13 @@ public:
 	CFGNode::NodeType getNodeType();
 
 	void pushInEdge(CFGEdge *edge);
+	void deleteInEdge(CFGEdge *edge);
 	int getNumIns();
 	CFGEdge *getInEdge(int in_idx);
 	CFGNode *getInNode(int in_idx);
 
 	void pushOutEdge(CFGEdge *edge);
+	void deleteOutEdge(CFGEdge *edge);
 	int getNumOuts();
 	CFGEdge *getOutEdge(int out_idx);
 	CFGNode *getOutNode(int out_idx);
@@ -98,8 +100,12 @@ protected:
 	void createCFGEdge(llvm::Instruction *src_inst, llvm::Instruction *dst_inst, 
 						CFGEdge::EdgeType edge_type);
 	void collectEntry();
+	void deleteEdge(CFGEdge *edge);
+	void deleteEdge(llvm::Instruction *src_inst, llvm::Instruction *dst_inst);
 
 public:
+	std::set<CFGNode *> &getNodeSet();
+	std::set<CFGEdge *> &getEdgeSet();
 	CFGNode *getCFGNode(llvm::Instruction *inst);
 	std::set<CFGNode *> getIntraBetween(CFGNode *src_node, CFGNode *dst_node);
 	std::set<CFGNode *> getInterBetween(CFGNode *src_node, CFGNode *dst_node);

@@ -18,7 +18,7 @@ private:
 	std::vector<int> unlock_arg_idx_vec;
 
 public:
-	LockRuleMiner(ModPack *mod_pack, IntraCFG *cfg);
+	LockRuleMiner(ModPack *mod_pack, IntraCFG *cfg, LockAPI *lock_api);
 	~LockRuleMiner();
 
 public:

@@ -69,6 +69,16 @@ void CFGNode::pushInEdge(CFGEdge *edge) {
 	in_edges.push_back(edge);
 }
 
+void CFGNode::deleteInEdge(CFGEdge *edge) {
+	for (size_t edge_idx = 0; edge_idx < in_edges.size(); edge_idx++) {
+		if (in_edges[edge_idx] == edge) {
+			in_edges[edge_idx] = in_edges.back();
+			in_edges.pop_back();
+			break;
+		}
+	}
+}
+
 int CFGNode::getNumIns() {
 	return (int)(in_edges.size());
 }
@@ -83,6 +93,16 @@ CFGNode *CFGNode::getInNode(int in_idx) {
 
 void CFGNode::pushOutEdge(CFGEdge *edge) {
 	out_edges.push_back(edge);
+}
+
+void CFGNode::deleteOutEdge(CFGEdge *edge) {
+	for (size_t edge_idx = 0; edge_idx < out_edges.size(); edge_idx++) {
+		if (out_edges[edge_idx] == edge) {
+			out_edges[edge_idx] = out_edges.back();
+			out_edges.pop_back();
+			break;
+		}
+	}
 }
 
 int CFGNode::getNumOuts() {
@@ -240,6 +260,34 @@ void CFG::collectEntry() {
 			entry_vec.push_back(node);
 		}
 	}
+}
+
+void CFG::deleteEdge(CFGEdge *edge) {
+	CFGNode *src_node = edge->getSrc();
+	CFGNode *dst_node = edge->getDst();
+	src_node->deleteOutEdge(edge);
+	dst_node->deleteInEdge(edge);
+	edge_set.erase(edge);
+	delete edge;
+}
+
+void CFG::deleteEdge(Instruction *src_inst, Instruction *dst_inst) {
+	CFGNode *src_node = getCFGNode(src_inst);
+	CFGNode *dst_node = getCFGNode(dst_inst);
+	for (auto edge : edge_set) {
+		if (edge->getSrc() == src_node && edge->getDst() == dst_node) {
+			deleteEdge(edge);
+			break;
+		}
+	}
+}
+
+set<CFGNode *> &CFG::getNodeSet() {
+	return node_set;
+}
+
+set<CFGEdge *> &CFG::getEdgeSet() {
+	return edge_set;
 }
 
 CFGNode *CFG::getCFGNode(Instruction *inst) {

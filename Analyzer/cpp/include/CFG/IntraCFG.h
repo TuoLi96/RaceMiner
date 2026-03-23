@@ -9,7 +9,7 @@
 #include "Manager/ModMgr/ModMgr.h"
 #include "Manager/ModMgr/ModPack.h"
 
-class IntraCFG : CFG {
+class IntraCFG : public CFG {
 private:
 	ModPack *mod_pack;
 	ModMgr *analyzing_mod_mgr;

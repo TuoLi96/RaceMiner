@@ -22,8 +22,17 @@ void LockRuleMiner::pushLockFuncInfo(string lock_func, int lock_arg_idx,
 }
 
 void LockRuleMiner::handleFunc(Function &func) {
-	
-	for (auto 
+	vector<CallInst *> lock_call;
+	vector<CallInst *> unlock_call;
+	for (auto &blk : func) {
+		for (auto &inst : blk) {
+			if (CallInst *call_inst = dyn_cast<CallInst>(*inst)) {
+				if (lock_api->isLock(call_inst)) {
+					
+				}
+			}
+		}
+	}
 }
 
 void LockRuleMiner::handleMod(Module &mod) {
@@ -32,7 +41,7 @@ void LockRuleMiner::handleMod(Module &mod) {
 	}
 }
 
-void LockRuleMiner::analyzer() {
+void LockRuleMiner::analyze() {
 	for (int mgr_idx = 0; mgr_idx < mod_pack->getNumMgrs(); mgr_idx++) {
 		analyzing_mod_mgr = mod_pack->getMgr(mgr_idx);
 		Module *mod = analyzing_mod_mgr->getMod();
