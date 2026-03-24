@@ -24,6 +24,7 @@ public:
 
 public:
 	void insertVal(llvm::Value *val);
+	const std::set<llvm::Value *> &getAliasSet() const;
 
 	void pushInEdge(AGEdge *edge);
 	int getNumIns();
@@ -31,7 +32,7 @@ public:
 	AGNode *getInNode(int in_idx);
 
 	void pushOutEdge(int offset, AGEdge *edge);
-	const std::map<int, AGEdge*>& getOutEdges() const;
+	const std::map<int, AGEdge*> &getOutEdges() const;
 	AGEdge *getOutEdgeByOffset(int offset);
 	AGNode *getOutNodeByOffset(int offset);
 };
@@ -52,6 +53,11 @@ public:
 	int getOffset();
 };
 
+struct AGPathStep {
+	AGNode *node;
+	AGEdge *edge;
+};
+
 class AliasGraph {
 private:
 	std::set<AGNode *> agnode_set;
@@ -61,6 +67,9 @@ private:
 public:
 	AliasGraph();
 	~AliasGraph();
+
+private:
+	std::unordered_map<AGNode *, int> getBackDist(AGNode *dst);
 
 protected:
 	void createAGNode(llvm::Value *val);
@@ -72,6 +81,10 @@ public:
 	virtual void build() = 0;
 
 	bool isAlias(llvm::Value *val1, llvm::Value *val2);
+	AGNode *findNearestAncestor(AGNode *node1, AGNode *node2, bool is_alloca=true);
+	AGNode *findNearestAncestor(llvm::Value *val1, llvm::Value *val2, bool is_alloca=true);
+	std::vector<AGPathStep> getAGPath(AGNode *src, AGNode *dst);
+	std::vector<int> getOffsetAGPath(AGNode *src, AGNode *dst);
 };
 
 #endif

@@ -108,7 +108,9 @@ public:
 	std::set<CFGEdge *> &getEdgeSet();
 	CFGNode *getCFGNode(llvm::Instruction *inst);
 	std::set<CFGNode *> getIntraBetween(CFGNode *src_node, CFGNode *dst_node);
+	std::set<CFGNode *> getIntraBetween(llvm::Instruction *src_inst, llvm::Instruction *dst_inst);
 	std::set<CFGNode *> getInterBetween(CFGNode *src_node, CFGNode *dst_node);
+	std::set<CFGNode *> getInterBetween(llvm::Instruction *src_inst, llvm::Instruction *dst_inst);
 
 	int getNumEntries();
 	CFGNode *getEntry(int entry_idx);

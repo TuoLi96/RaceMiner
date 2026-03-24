@@ -1,5 +1,10 @@
 #include "AliasAnalysis/AliasGraph.h"
 
+#include <queue>
+#include <unordered_map>
+
+#include "llvm/IR/Instructions.h"
+
 using namespace std;
 using namespace llvm;
 
@@ -19,6 +24,10 @@ AGNode::~AGNode() {
 
 void AGNode::insertVal(Value *val) {
 	alias_set.insert(val);
+}
+
+const set<Value *> &AGNode::getAliasSet() const {
+	return alias_set;
 }
 
 void AGNode::pushInEdge(AGEdge *edge) {
@@ -110,6 +119,26 @@ AliasGraph::~AliasGraph() {
 	}
 }
 
+unordered_map<AGNode *, int> AliasGraph::getBackDist(AGNode *dst) {
+	unordered_map<AGNode *, int> back_dist;
+	queue<AGNode *> work_queue;
+	back_dist[dst] = 0;
+	work_queue.push(dst);
+
+	while (!work_queue.empty()) {
+		AGNode *node = work_queue.front();
+		work_queue.pop();
+		for (int in_idx = 0; in_idx < node->getNumIns(); in_idx++) {
+			AGNode *pre_node = node->getInNode(in_idx);
+			if (!back_dist.count(pre_node)) {
+				back_dist[pre_node] = back_dist[node] + 1;
+				work_queue.push(pre_node);
+			}
+		}
+	}
+	return back_dist;
+}
+
 void AliasGraph::createAGNode(Value *val) {
 	if (val2node.find(val) != val2node.end()) {
 		return;
@@ -186,4 +215,90 @@ bool AliasGraph::isAlias(Value *val1, Value *val2) {
 	AGNode *agnode1 = getAGNode(val1);
 	AGNode *agnode2 = getAGNode(val2);
 	return agnode1 == agnode2;
+}
+
+AGNode *AliasGraph::findNearestAncestor(AGNode *node1, AGNode *node2, bool is_alloca) {
+	unordered_map<AGNode *, int> node_back_dist1 = getBackDist(node1);
+	unordered_map<AGNode *, int> node_back_dist2 = getBackDist(node2);
+
+	AGNode *nearest_ancestor = NULL;
+	int nearest_dist = INT_MAX;
+	for (auto & [node, d1] : node_back_dist1) {
+		if (is_alloca) {
+			bool has_alloca = false;
+			for (auto val : node->getAliasSet()) {
+				if (isa<AllocaInst>(val)) {
+					has_alloca = true;
+				} 
+			}
+			if (!has_alloca) {
+				continue;
+			}
+		}
+		if (node_back_dist2.count(node)) {
+			int d2 = node_back_dist2[node];
+			if (d1 + d2 < nearest_dist) {
+				nearest_dist = d1 + d2;
+				nearest_ancestor = node;
+			}
+		}
+	}
+	return nearest_ancestor;
+}
+
+AGNode *AliasGraph::findNearestAncestor(Value *val1, Value *val2, bool is_alloca) {
+	AGNode *node1 = getAGNode(val1);
+	AGNode *node2 = getAGNode(val2);
+	return findNearestAncestor(node1, node2, is_alloca);
+}
+
+vector<AGPathStep> getAGPath(AGNode *src, AGNode *dst) {
+	unordered_map<AGNode *, pair<AGNode *, AGEdge *> > parent;
+	queue<AGNode *> work_queue;
+
+	work_queue.push(src);
+	parent[src] = {NULL, NULL};
+
+	while (!work_queue.empty()) {
+		AGNode *node = work_queue.front();
+		work_queue.pop();
+
+		if (node == dst) {
+			break;
+		}
+
+		for (auto & [offset, edge] : node->getOutEdges()) {
+			AGNode *out_node = edge->getDst();
+
+			if (!parent.count(out_node)) {
+				parent[out_node] = {node, edge};
+				work_queue.push(out_node);
+			}
+		}
+	}
+
+	if (!parent.count(dst)) {
+		return {};
+	}
+
+	vector<AGPathStep> path;
+	AGNode *cur = dst;
+
+	while (cur) {
+		auto [p, e] = parent[cur];
+		path.push_back({cur, e});
+		cur = p;
+	}
+
+	reverse(path.begin(), path.end());
+	return path;
+}
+
+vector<int> AliasGraph::getOffsetAGPath(AGNode *src, AGNode *dst) {
+	vector<AGPathStep> path = getAGPath(src, dst);
+	vector<int> offset_path;
+	for (auto path_step : path) {
+		offset_path.push_back(path_step.edge->getOffset());
+	}
+	return offset_path;
 }

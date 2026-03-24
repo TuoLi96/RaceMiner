@@ -304,6 +304,12 @@ set<CFGNode *> CFG::getIntraBetween(CFGNode *src_node, CFGNode *dst_node) {
 	return result;
 }
 
+set<CFGNode *> CFG::getIntraBetween(Instruction *src_inst, Instruction *dst_inst) {
+	CFGNode *src_node = getCFGNode(src_inst);
+	CFGNode *dst_node = getCFGNode(dst_inst);
+	return getIntraBetween(src_node, dst_node);
+}
+
 set<CFGNode *> CFG::getInterBetween(CFGNode *src_node, CFGNode *dst_node) {
 	set<CFGNode *> src_succs = getInterSuccs(src_node);
 	set<CFGNode *> dst_preds = getInterPreds(dst_node);
@@ -312,6 +318,12 @@ set<CFGNode *> CFG::getInterBetween(CFGNode *src_node, CFGNode *dst_node) {
 					dst_preds.begin(), dst_preds.end(),
 					inserter(result, result.begin()));
 	return result;
+}
+
+set<CFGNode *> CFG::getInterBetween(Instruction *src_inst, Instruction *dst_inst) {
+	CFGNode *src_node = getCFGNode(src_inst);
+	CFGNode *dst_node = getCFGNode(dst_inst);
+	return getInterBetween(src_node, dst_node);
 }
 
 int CFG::getNumEntries() {
