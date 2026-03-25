@@ -1,4 +1,5 @@
 #include "AliasAnalysis/TypeGraph.h"
+#include "Utils/IROperations.h"
 #include "Constants.h"
 
 #include <spdlog/spdlog.h>
@@ -78,6 +79,42 @@ void TypeNode::addInEdge(int offset, string field, TypeEdge *edge) {
 void TypeNode::addOutEdge(int offset, string field, TypeEdge *edge) {
 	out_offset_idx[offset] = edge;
 	out_field_idx[field] = edge;
+}
+
+TypeEdge *TypeNode::getOutEdgeByOffset(int offset) {
+	auto out_find = out_offset_idx.find(offset);
+	if (out_find == out_offset_idx.end()) {
+		return NULL;
+	} else {
+		return out_find->second;
+	}
+}
+
+TypeNode *TypeNode::getOutNodeByOffset(int offset) {
+	TypeEdge *out_edge = getOutEdgeByOffset(offset);
+	if (out_edge) {
+		return out_edge->getDst();
+	} else {
+		return NULL;
+	}
+}
+
+TypeEdge *TypeNode::getOutEdgeByField(string field) {
+	auto out_find = out_field_idx.find(field);
+	if (out_find == out_field_idx.end()) {
+		return NULL;
+	} else {
+		return out_find->second;
+	}
+}
+
+TypeNode *TypeNode::getOutNodeByField(string field) {
+	TypeEdge *out_edge = getOutEdgeByField(field);
+	if (out_edge) {
+		return out_edge->getDst();
+	} else {
+		return NULL;
+	}
 }
 
 std::string TypeNode::toDotNode(size_t id) {
@@ -433,12 +470,55 @@ void TypeGraph::handleMod(Module *mod) {
 	}
 }
 
+string TypeGraph::getFieldPath(Value *val, vector<int> &offset_vec) {
+	string field_path = "";
+	DIVariable *dbg_var = getDbgVar(val);
+	if (!dbg_var) {
+		return "";
+	}
+	DIType *ditype = dbg_var->getType();
+	TypeNode *type_node = getTypeNode(ditype);
+	for (size_t offset_idx = 0; offset_idx < offset_vec.size(); offset_idx++) {
+		int offset = offset_vec[offset_idx];
+		TypeEdge *type_edge = type_node->getOutEdgeByOffset(offset);
+		if (type_edge == NULL) {
+			return "";
+		}
+		type_node = type_edge->getDst();
+		string field_name = type_edge->getField();
+		if (field_name == "*") {
+			continue;
+		} else {
+			field_path = field_path + "." + field_name;
+		}
+	}
+	return field_path;
+}
+
 void TypeGraph::analyze() {
 	for (size_t mod_i = 0 ; mod_i < mod_pack->getNumMgrs(); mod_i++) {
 		analyzing_mod_mgr = mod_pack->getMgr(mod_i);
 		Module *mod = analyzing_mod_mgr->getMod();
 		handleMod(mod);
 	}
+}
+
+string TypeGraph::getTypePath(Value *val, vector<int> &offset_vec) {
+	DIVariable *dbg_var = getDbgVar(val);
+	if (!dbg_var) {
+		return "";
+	}
+	DIType *ditype = dbg_var->getType();
+	TypeNode *tynode = getTypeNode(ditype);
+	return tynode->getTypeName() + getFieldPath(val, offset_vec);
+}
+
+string TypeGraph::getNamePath(Value *val, vector<int> &offset_vec) {
+	DIVariable *dbg_var = getDbgVar(val);
+	if (!dbg_var) {
+		return "";
+	}
+	return dbg_var->getName().str() + getFieldPath(val, offset_vec);	
 }
 
 void TypeGraph::dumpDot(string dot_file) {

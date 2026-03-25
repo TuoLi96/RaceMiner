@@ -17,12 +17,49 @@ LockCollector::~LockCollector() {
 	// Need to do nothing at present.
 }
 
+vector<string> LockCollector::getAccessPath(Value *lock_val, 
+							Value *unlock_val, Value *access_val) {
+	pair<Value *, vector<int> > lock_val_path = getOffsetValPath(lock_val);
+	pair<Value *, vector<int> > unlock_val_path = getOffsetValPath(unlock_val);
+	par<Value *, vector<int> > access_val_path = getOffsetValPath(access_val);
+	Value *lock_root = lock_val_path.first;
+	Value *unlock_root = unlock_val_path.first;
+	Value *access_root = access_val_path.first;
+	Value *common_root = NULL;
+	vector<int> lock_offset_ag_path, unlock_offset_ag_path, access_offset_ag_path;
+
+	if (!lock_root || !unlock_root || !access_root || 
+				lock_root != access_root || unlock_root != access_root) {
+		vector<Value *> vals = {lock_root, unlock_root, access_root};
+		AGNode *ancestor = ag->findNearestAncestor(vals, true);
+		if (ancestor == NULL) {
+			return {};
+		}
+		common_root = ancestor->getAlloca();
+		AGNode *lock_node = ag->getAGNode(lock_val);
+		AGNode *unlock_node = ag->getAGNode(unlock_val);
+		AGNode *access_node = ag->getAGNode(access_val);
+		lock_offset_ag_path = ag->getOffsetAGPath(ancestor, lock_node);
+		unlock_offset_ag_path = ag->getOffsetAGPath(ancestor, unlock_node);
+		access_offset_ag_path = ag->getOffsetAGPath(ancestor, access_node);
+	} else {
+		common_root = lock_root;
+		lock_offset_ag_path = lock_val_path.second;
+		unlock_offset_ag_path = unlock_val_path.second;
+		access_offset_ag_path = access_val_path.second;
+	}
+	
+}
+
 void LockCollector::handleInst(CallInst *lock_inst, CallInst *unlock_inst, Instruction *inst) {
 	Value *lock_val = lock_api->getLockVal(lock_inst);
 	Value *unlock_val = lock_api->getUnlockVal(unlock_inst);
+	pair<Value *, vector<int> > lock_val_path = getOffsetValPath(lock_val);
+	pair<Value *, vector<int> > unlock_val_path = getOffsetValPath(unlock_val);
 	if (BinaryOperator *binary_inst = dyn_cast<BinaryOperator>(inst)) {
 		for (int op_idx = 0; op_idx < binary_inst->getNumOperands(); op_idx++) {
 			Value *op = binary_inst->getOperand(op_idx);
+			pair<Value *, vector<int> > val_path = getOffsetValPath(
 		}
 	} else if (CallInst *call_inst = dyn_cast<CallInst>(inst)) {
 		for (int arg_idx = 0; arg_idx < call_inst->arg_size(); arg_idx++) {

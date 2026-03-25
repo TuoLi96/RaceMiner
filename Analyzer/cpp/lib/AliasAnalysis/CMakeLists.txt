@@ -16,6 +16,7 @@ target_link_libraries(AliasAnalysis
     ${LLVM_LIBS}
 	spdlog::spdlog
 	ModMgr
+	Utils
 )
 
 target_include_directories(AliasAnalysis

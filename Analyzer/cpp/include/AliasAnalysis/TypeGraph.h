@@ -5,6 +5,7 @@
 #include <string>
 #include <map>
 #include <unordered_map>
+#include <vector>
 
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/BinaryFormat/Dwarf.h"
@@ -39,8 +40,14 @@ public:
 	bool isDerived();
 	void pushTypeName(std::string type_name);
 	void insertVal(llvm::Value *val);
+
+	// FIXME: Multiple edges can have identical offset and field.
 	void addInEdge(int offset, std::string field, TypeEdge *edge);
 	void addOutEdge(int offset, std::string field, TypeEdge *edge);
+	TypeEdge *getOutEdgeByOffset(int offset);
+	TypeNode *getOutNodeByOffset(int offset);
+	TypeEdge *getOutEdgeByField(std::string field);
+	TypeNode *getOutNodeByField(std::string field);
 
 	std::string toDotNode(size_t id);
 };
@@ -92,9 +99,13 @@ private:
 	void handleDIBasicType(llvm::DIBasicType *basic_ditype);
 	void handleDIType(llvm::DIType *ditype);
 	void handleMod(llvm::Module *mod);
+	
+	std::string getFieldPath(llvm::Value *val, std::vector<int> &offset);
 
 public:
 	void analyze();
+	std::string getTypePath(llvm::Value *val, std::vector<int> &offset);
+	std::string getNamePath(llvm::Value *val, std::vector<int> &offset);
 	void dumpDot(std::string dot_name);
 	void dumpSvg(std::string svg_name);
 };

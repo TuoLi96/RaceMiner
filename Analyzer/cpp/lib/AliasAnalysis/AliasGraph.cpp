@@ -30,6 +30,25 @@ const set<Value *> &AGNode::getAliasSet() const {
 	return alias_set;
 }
 
+bool AGNode::isAnchor() {
+	for (auto val : alias_set) {
+		if (isa<AllocaInst>(val) || isa<GlobalVariable>(val)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+Value *AGNode::getOneAnchor() {
+	for (auto val : alias_set) {
+		if (isa<AllocaInst>(val) || isa<GlobalVariable>(val)) {
+			return val;
+		}
+	}
+	return NULL;
+}
+
+
 void AGNode::pushInEdge(AGEdge *edge) {
 	in_edges.push_back(edge);
 }
@@ -217,39 +236,45 @@ bool AliasGraph::isAlias(Value *val1, Value *val2) {
 	return agnode1 == agnode2;
 }
 
-AGNode *AliasGraph::findNearestAncestor(AGNode *node1, AGNode *node2, bool is_alloca) {
-	unordered_map<AGNode *, int> node_back_dist1 = getBackDist(node1);
-	unordered_map<AGNode *, int> node_back_dist2 = getBackDist(node2);
+AGNode *AliasGraph::findNearestAncestor(vector<AGNode *> &nodes, bool should_anchor) {
+	if (nodes.empty()) {
+		return NULL;
+	}
+	vector<unordered_map<AGNode *, int> > all_dist;
+	for (auto node : nodes) {
+		all_dist.push_back(getBackDist(node));
+	}
 
 	AGNode *nearest_ancestor = NULL;
 	int nearest_dist = INT_MAX;
-	for (auto & [node, d1] : node_back_dist1) {
-		if (is_alloca) {
-			bool has_alloca = false;
-			for (auto val : node->getAliasSet()) {
-				if (isa<AllocaInst>(val)) {
-					has_alloca = true;
-				} 
-			}
-			if (!has_alloca) {
-				continue;
-			}
+	for (auto & [node, d0] : all_dist[0]) {
+		if (should_anchor && !node->isAnchor()) {
+			continue;
 		}
-		if (node_back_dist2.count(node)) {
-			int d2 = node_back_dist2[node];
-			if (d1 + d2 < nearest_dist) {
-				nearest_dist = d1 + d2;
-				nearest_ancestor = node;
+		int total_dist = d0;
+		bool is_valid = true;
+		for (int dist_idx = 1; dist_idx < all_dist.size(); dist_idx++) {
+			if (!all_dist[dist_idx].count(node)) {
+				is_valid = false;
+				break;
 			}
+			total_dist += all_dist[dist_idx][node];
+		}
+		if (is_valid && total_dist < nearest_dist) {
+			nearest_dist = total_dist;
+			nearest_ancestor = node;
 		}
 	}
 	return nearest_ancestor;
 }
 
-AGNode *AliasGraph::findNearestAncestor(Value *val1, Value *val2, bool is_alloca) {
-	AGNode *node1 = getAGNode(val1);
-	AGNode *node2 = getAGNode(val2);
-	return findNearestAncestor(node1, node2, is_alloca);
+AGNode *AliasGraph::findNearestAncestor(vector<Value *> &vals, bool should_anchor) {
+	vector<AGNode *> nodes;
+	for (auto val : vals) {
+		AGNode *node1 = getAGNode(val);
+		nodes.push_back(node1);
+	}
+	return findNearestAncestor(nodes, should_anchor);
 }
 
 vector<AGPathStep> getAGPath(AGNode *src, AGNode *dst) {

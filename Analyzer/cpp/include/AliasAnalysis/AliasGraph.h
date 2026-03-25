@@ -25,6 +25,8 @@ public:
 public:
 	void insertVal(llvm::Value *val);
 	const std::set<llvm::Value *> &getAliasSet() const;
+	bool isAnchor();
+	llvm::Value *getOneAnchor();
 
 	void pushInEdge(AGEdge *edge);
 	int getNumIns();
@@ -81,8 +83,8 @@ public:
 	virtual void build() = 0;
 
 	bool isAlias(llvm::Value *val1, llvm::Value *val2);
-	AGNode *findNearestAncestor(AGNode *node1, AGNode *node2, bool is_alloca=true);
-	AGNode *findNearestAncestor(llvm::Value *val1, llvm::Value *val2, bool is_alloca=true);
+	AGNode *findNearestAncestor(std::vector<AGNode *> &nodes, bool should_anchor=true);
+	AGNode *findNearestAncestor(std::vector<llvm::Value *> &vals, bool should_anchor=true);
 	std::vector<AGPathStep> getAGPath(AGNode *src, AGNode *dst);
 	std::vector<int> getOffsetAGPath(AGNode *src, AGNode *dst);
 };

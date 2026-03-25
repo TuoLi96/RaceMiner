@@ -49,3 +49,54 @@ pair<Value *, vector<int> > getOffsetValPath(Value *val) {
 	}
 	return {alloca_val, offset_path};
 }
+
+DIVariable *getDbgVar(Value *val) {
+	// Process global variables.
+	if (GlobalVariable *global_val = dyn_cast<GlobalVariable>(val)) {
+		SmallVector<DIGlobalVariableExpression *, 4> dbg_infos;
+		global_val->getDebugInfo(dbg_infos);
+		DIVariable *first_dbg_var = NULL;
+		for (auto *dbg_info : dbg_infos) {
+			if (auto *dbg_var = dbg_info->getVariable()) {
+				if (!dbg_var->getName().empty()) {
+					return dbg_var;
+				}
+				if (!first_dbg_var) {
+					first_dbg_var = dbg_var;
+				}
+			}
+		}
+		return first_dbg_var;
+	}
+
+	// Process other variables.
+	SmallVector<DbgVariableIntrinsic *, 4> dbg_users;
+	findDbgUsers(dbg_users, val);
+	DIVariable *first_dbg_var = NULL;
+
+	for (auto *DVI : dbg_users) {
+		if (isa<DbgDeclareInst>(DVI)) {
+			if (auto *dbg_var = DVI->getVariable()) {
+				if (!dbg_var->getName().empty()) {
+					return dbg_var; 
+				}
+				if (!first_dbg_var) {
+					first_dbg_var = dbg_var;
+				}
+			}
+		}
+	}
+	for (auto *DVI : dbg_users) {
+		if (isa<DbgDeclareInst>(DVI)) {
+			if (auto *dbg_var = DVI->getVariable()) {
+				if (!dbg_var->getName().empty()) {
+					return dbg_var;
+				}
+				if (!first_dbg_var) {
+					first_dbg_var = dbg_var;
+				}
+			}
+		}
+	}
+	return first_dbg_var;
+}
