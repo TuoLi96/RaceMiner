@@ -39,7 +39,7 @@ bool AGNode::isAnchor() {
 	return false;
 }
 
-Value *AGNode::getOneAnchor() {
+Value *AGNode::getOneAnchorVal() {
 	for (auto val : alias_set) {
 		if (isa<AllocaInst>(val) || isa<GlobalVariable>(val)) {
 			return val;

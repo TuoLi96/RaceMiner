@@ -26,7 +26,7 @@ public:
 	void insertVal(llvm::Value *val);
 	const std::set<llvm::Value *> &getAliasSet() const;
 	bool isAnchor();
-	llvm::Value *getOneAnchor();
+	llvm::Value *getOneAnchorVal();
 
 	void pushInEdge(AGEdge *edge);
 	int getNumIns();

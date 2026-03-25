@@ -1,2 +1,2 @@
 add_subdirectory(ConcAPI)
-#add_subdirectory(RaceDetector)
+add_subdirectory(RaceDetector)
