@@ -40,18 +40,45 @@ void PathMgr::envError(string method, string env_var) {
 	spdlog::error("PathMgr::{}: Environment not set: {}", method, env_var);
 }
 
-void PathMgr::createFileIfNotExist(fs::path path) {
+void PathMgr::createDirIfNotExist(fs::path path) {
 	fs::create_directories(path.parent_path());
-	if (!fs::exists(path)) {
+	/*if (!fs::exists(path)) {
 		ofstream ofs(path.string());
 		ofs.close();
-	}
+	}*/
+}
+
+void PathMgr::createDBIfNotExist() {
+	/* Database */
+	fs::path db_root = work_root / "Database";
+	/** Database/SourceInfo */
+
+	/** DataBase/BugInfo */
+	fs::path db_bug = db_root / "BugInfo";
+	fs::path db_bug_race = db_bug / "Race.db";
+	createDirIfNotExist(db_bug_race);
+	path_json["db_bug_race"] = db_bug_race.string();
+	/* DBSchema */
+	fs::path db_schema_root = miner_root / "DBSchema";
+	/** DBSchema/BugDetection */
+	fs::path tbl_bug_detection_root = db_schema_root / "BugDetection";
+	/*** DBSchema/BugDetection/Race */
+	fs::path tbl_race_root = tbl_bug_detection_root / "Race";
+	fs::path tbl_create_lock_collection = tbl_race_root / "lock_collection.create";
+	createDirIfNotExist(tbl_create_lock_collection);
+	path_json["tbl_create_lock_collection"] = tbl_create_lock_collection.string();
+	fs::path tbl_insert_lock_collection = tbl_race_root / "lock_collection.insert";
+	createDirIfNotExist(tbl_insert_lock_collection);
+	path_json["tbl_insert_lock_collection"] = tbl_insert_lock_collection.string();
+	fs::path tbl_select_lock_collection = tbl_race_root / "lock_collection.select";
+	createDirIfNotExist(tbl_select_lock_collection);
+	path_json["tbl_select_lock_collection"] = tbl_select_lock_collection.string();
 }
 
 void PathMgr::createAPIIfNotExist() {
 	fs::path api_lock_path = work_root / "config" / "API" / "LockAPI";
 	path_json["api_lock_path"] = api_lock_path.string();
-	createFileIfNotExist(api_lock_path);
+	createDirIfNotExist(api_lock_path);
 }
 
 void PathMgr::createIfNotExist() {
@@ -62,6 +89,7 @@ void PathMgr::createIfNotExist() {
 	fs::create_directories(path_path.parent_path());
 	
 	createAPIIfNotExist();
+	createDBIfNotExist();
 
 	ofstream json_file(path_path.string());
 	json_file << path_json.dump(4);
@@ -75,4 +103,20 @@ void PathMgr::load() {
 
 string PathMgr::getAPILockPath() {
 	return path_json["api_lock_path"];
+}
+
+string PathMgr::getRaceDBPath() {
+	return path_json["db_bug_race"];
+}
+
+string PathMgr::getTblCreateLockCollection() {
+	return path_json["tbl_create_lock_collection"];
+}
+
+string PathMgr::getTblInsertLockCollection() {
+	return path_json["tbl_insert_lock_collection"];
+}
+
+string PathMgr::getTblSelectLockCollection() {
+	return path_json["tbl_select_lock_collection"];
 }

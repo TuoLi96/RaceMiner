@@ -18,13 +18,19 @@ public:
 private:
 	void envError(std::string method, std::string env_var);
 
-	void createFileIfNotExist(std::filesystem::path path);
+	void createDirIfNotExist(std::filesystem::path path);
+	void createDBIfNotExist();
 	void createAPIIfNotExist();
 	void createIfNotExist();
 	void load();
 
 public:
 	std::string getAPILockPath();
+
+	std::string getRaceDBPath();
+	std::string getTblCreateLockCollection();
+	std::string getTblInsertLockCollection();
+	std::string getTblSelectLockCollection();
 };
 
 #endif
