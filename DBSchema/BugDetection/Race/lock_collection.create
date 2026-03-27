@@ -1,0 +1,25 @@
+CREATE TABLE IF NOT EXISTS lock_collection (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	file TEXT NOT NULL,
+	func TEXT NOT NULL,
+	lock_func TEXT NOT NULL,
+	lock_var TEXT NOT NULL,
+	lock_line INTEGER NOT NULL,
+	unlock_func TEXT NOT NULL,
+	unlock_var TEXT NOT NULL,
+	unlock_line INTEGER NOT NULL,
+	access_var TEXT NOT NULL,
+	access_line INTEGER NOT NULL,
+	UNIQUE (
+		file,
+		func,
+		lock_func,
+		lock_var,
+		lock_line,
+		unlock_func,
+		unlock_var,
+		unlock_line,
+		access_var,
+		access_line
+	)
+);

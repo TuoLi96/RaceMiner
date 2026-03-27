@@ -1,0 +1,24 @@
+INSERT INTO lock_collection (
+	file,
+	func,
+	lock_func,
+	lock_var,
+	lock_line,
+	unlock_func,
+	unlock_var,
+	unlock_line,
+	access_var,
+	access_line
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (
+	file,
+	func,
+	lock_func,
+	lock_var,
+	lock_line,
+	unlock_func,
+	unlock_var,
+	unlock_line,
+	access_var,
+	access_line
+) DO NOTHING;
