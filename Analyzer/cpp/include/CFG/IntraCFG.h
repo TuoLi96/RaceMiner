@@ -16,7 +16,7 @@ private:
 
 public:
 	IntraCFG(ModPack *mod_pack);
-	~IntraCFG();
+	virtual ~IntraCFG();
 
 private:
 	void createNodeForBlock(llvm::BasicBlock &blk);

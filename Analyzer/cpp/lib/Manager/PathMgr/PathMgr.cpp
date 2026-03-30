@@ -51,15 +51,23 @@ void PathMgr::createDirIfNotExist(fs::path path) {
 void PathMgr::createDBIfNotExist() {
 	/* Database */
 	fs::path db_root = work_root / "Database";
-	/** Database/SourceInfo */
 
+	/** Database/SourceInfo */
+	fs::path db_source_info = db_root / "SourceInfo";
+	fs::path db_compile = db_source_info / "compile.db";
+	createDirIfNotExist(db_compile);
+	path_json["db_compile"] = db_compile.string();
 	/** DataBase/BugInfo */
 	fs::path db_bug = db_root / "BugInfo";
 	fs::path db_bug_race = db_bug / "Race.db";
 	createDirIfNotExist(db_bug_race);
 	path_json["db_bug_race"] = db_bug_race.string();
+
+
+
 	/* DBSchema */
 	fs::path db_schema_root = miner_root / "DBSchema";
+
 	/** DBSchema/BugDetection */
 	fs::path tbl_bug_detection_root = db_schema_root / "BugDetection";
 	/*** DBSchema/BugDetection/Race */
@@ -73,6 +81,21 @@ void PathMgr::createDBIfNotExist() {
 	fs::path tbl_select_lock_collection = tbl_race_root / "lock_collection.select";
 	createDirIfNotExist(tbl_select_lock_collection);
 	path_json["tbl_select_lock_collection"] = tbl_select_lock_collection.string();
+
+	/** DBSchema/SourceInfo */
+	fs::path tbl_source_info_root = db_schema_root / "SourceInfo";
+	/*** DBSchema/SourceInfo/Compile */
+	fs::path tbl_compile_root = tbl_source_info_root / "Compile";
+	fs::path tbl_create_link = tbl_compile_root / "link.create";
+	createDirIfNotExist(tbl_create_link);
+	path_json["tbl_create_link"] = tbl_create_link.string();
+	fs::path tbl_insert_link = tbl_compile_root / "link.insert";
+	createDirIfNotExist(tbl_insert_link);
+	path_json["tbl_insert_link"] = tbl_insert_link.string();
+	fs::path tbl_select_link = tbl_compile_root / "link.select";
+	createDirIfNotExist(tbl_select_link);
+	path_json["tbl_select_link"] = tbl_select_link.string();
+
 }
 
 void PathMgr::createAPIIfNotExist() {
@@ -119,4 +142,20 @@ string PathMgr::getTblInsertLockCollection() {
 
 string PathMgr::getTblSelectLockCollection() {
 	return path_json["tbl_select_lock_collection"];
+}
+
+string PathMgr::getCompileDBPath() {
+	return path_json["db_compile"];
+}
+
+string PathMgr::getTblCreateLink() {
+	return path_json["tbl_create_link"];
+}
+
+string PathMgr::getTblInsertLink() {
+	return path_json["tbl_insert_link"];
+}
+
+string PathMgr::getTblSelectLink() {
+	return path_json["tbl_select_link"];
 }

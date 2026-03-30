@@ -1,7 +1,8 @@
 add_library(DBMgr
     DBMgr.cpp
-    LockCollectionMgr.cpp
     TBLMgr.cpp
+    LockCollectionMgr.cpp
+	LinkMgr.cpp
 )
 
 target_include_directories(DBMgr

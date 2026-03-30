@@ -31,6 +31,12 @@ public:
 	std::string getTblCreateLockCollection();
 	std::string getTblInsertLockCollection();
 	std::string getTblSelectLockCollection();
+
+	std::string getCompileDBPath();
+	std::string getTblCreateLink();
+	std::string getTblInsertLink();
+	std::string getTblSelectLink();
+
 };
 
 #endif

@@ -1,0 +1,2 @@
+SELECT target_file, link_list, ir_list
+FROM link;
