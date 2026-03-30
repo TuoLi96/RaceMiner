@@ -6,7 +6,7 @@ WorkDir/*
 !WorkDir/config/
 !WorkDir/config/**
 
-TestSuite/*
+TestSuite/**
 !TestSuite/*/
 !TestSuite/Makefile
 !TestSuite/*.c
