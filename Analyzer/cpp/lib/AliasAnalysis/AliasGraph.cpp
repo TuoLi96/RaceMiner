@@ -323,6 +323,10 @@ vector<int> AliasGraph::getOffsetAGPath(AGNode *src, AGNode *dst) {
 	vector<AGPathStep> path = getAGPath(src, dst);
 	vector<int> offset_path;
 	for (auto path_step : path) {
+		if (!path_step.edge) {
+			// NOTE: This NULL edge is introduced in getAGPath for src parent.
+			continue;
+		}
 		offset_path.push_back(path_step.edge->getOffset());
 	}
 	return offset_path;
