@@ -1,0 +1,7 @@
+{
+    "api_lock_path": "/home/lituo/Work/RaceMiner/WorkDir/config/API/LockAPI",
+    "db_bug_race": "/home/lituo/Work/RaceMiner/WorkDir/Database/BugInfo/Race.db",
+    "tbl_create_lock_collection": "/home/lituo/Work/RaceMiner/DBSchema/BugDetection/Race/lock_collection.create",
+    "tbl_insert_lock_collection": "/home/lituo/Work/RaceMiner/DBSchema/BugDetection/Race/lock_collection.insert",
+    "tbl_select_lock_collection": "/home/lituo/Work/RaceMiner/DBSchema/BugDetection/Race/lock_collection.select"
+}

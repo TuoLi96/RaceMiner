@@ -1,0 +1,19 @@
+digraph TypeGraph {
+rankdir=LR;
+splines=true;
+overlap=false;
+nodesep=0.6;
+ranksep=1.0;
+node0 [shape=plaintext label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0"><TR><TD BGCOLOR="lightgray">void(*Dev)</TD></TR><TR><TD></TD></TR></TABLE>>];
+node1 [shape=plaintext label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0"><TR><TD BGCOLOR="lightgray">*Dev</TD></TR><TR><TD></TD></TR></TABLE>>];
+node2 [shape=plaintext label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0"><TR><TD BGCOLOR="lightgray">Dev</TD></TR><TR><TD></TD></TR><TR><TD ALIGN="LEFT">Dev</TD></TR></TABLE>>];
+node3 [shape=plaintext label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0"><TR><TD BGCOLOR="lightgray">*char</TD></TR><TR><TD></TD></TR></TABLE>>];
+node4 [shape=plaintext label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0"><TR><TD BGCOLOR="lightgray">char</TD></TR><TR><TD></TD></TR></TABLE>>];
+node5 [shape=plaintext label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0"><TR><TD BGCOLOR="lightgray">SpinLock</TD></TR><TR><TD></TD></TR><TR><TD ALIGN="LEFT">SpinLock</TD></TR></TABLE>>];
+node6 [shape=plaintext label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0"><TR><TD BGCOLOR="lightgray">int</TD></TR><TR><TD></TD></TR></TABLE>>];
+node1 -> node2 [label="ref : *"];
+node2 -> node3 [label="0 : msg"];
+node2 -> node5 [label="1 : lock"];
+node3 -> node4 [label="ref : *"];
+node5 -> node6 [label="0 : p"];
+}

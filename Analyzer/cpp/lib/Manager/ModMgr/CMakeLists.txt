@@ -11,6 +11,7 @@ add_library(ModMgr
 
 target_link_libraries(ModMgr
     ${LLVM_LIBS}
+	miner_flags
 )
 
 target_include_directories(ModMgr

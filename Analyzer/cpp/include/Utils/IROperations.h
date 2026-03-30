@@ -3,8 +3,8 @@
 
 #include <vector>
 
+#include "llvm/IR/Module.h"
 #include "llvm/IR/Value.h"
-
 #include "llvm/IR/DebugInfo.h" 
 
 struct ValPathStep {
@@ -16,5 +16,6 @@ std::vector<ValPathStep> getValPath(llvm::Value *val);
 std::pair<llvm::Value *, std::vector<int> > getOffsetValPath(llvm::Value *val);
 
 llvm::DIVariable *getDbgVar(llvm::Value *val);
+std::string getSourcePath(llvm::Module *mod);
 
 #endif

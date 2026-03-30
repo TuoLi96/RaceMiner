@@ -10,6 +10,7 @@
 #include "llvm/IR/Instructions.h"
 
 #include "Manager/ModMgr/ModPack.h"
+#include "Manager/DBMgr/LockCollectionMgr.h"
 #include "AliasAnalysis/TypeGraph.h"
 #include "AliasAnalysis/AliasGraph.h"
 #include "CFG/IntraAcycleCFG.h"
@@ -24,12 +25,19 @@ private:
 	AliasGraph *ag;
 	TypeGraph *tg;
 
+	LockCollectionMgr *lock_collection_mgr;
+
 public:
-	LockCollector(ModPack *mod_pack, IntraAcycleCFG *cfg, LockAPI *lock_api,
-				AliasGraph *ag, TypeGraph *tg);
+	LockCollector(ModPack *mod_pack, PathMgr *path_mgr,
+				IntraAcycleCFG *cfg, LockAPI *lock_api,
+				AliasGraph *ag, TypeGraph *tg,
+				DBMgr *db_mgr);
 	~LockCollector();
 
 private:
+	void record(llvm::CallInst *lock_call, llvm::CallInst *unlock_call, 
+					llvm::Instruction *access_inst, std::string lock_var,
+					std::string unlock_var, std::string access_var);
 	std::vector<std::string> getAccessPath(llvm::Value *lock_val, 
 								llvm::Value *unlock_val, llvm::Value *access_val);
 	void handleInst(llvm::CallInst *lock_inst, llvm::CallInst *unlock_inst,

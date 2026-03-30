@@ -1,6 +1,8 @@
 #include "Concurrency/RaceDetector/LockCollector.h"
 #include "Utils/IROperations.h"
 
+#include <iostream>
+
 using namespace std;
 using namespace llvm;
 
@@ -8,18 +10,40 @@ using namespace llvm;
  * Implementation of LockCollector
  */
 
-LockCollector::LockCollector(ModPack *mod_pack, IntraAcycleCFG *cfg,
-					LockAPI *lock_api, AliasGraph *ag, TypeGraph *tg) {
+LockCollector::LockCollector(ModPack *mod_pack, PathMgr *path_mgr, 
+					IntraAcycleCFG *cfg, LockAPI *lock_api, 
+					AliasGraph *ag, TypeGraph *tg,
+					DBMgr *db_mgr) {
 	this->mod_pack = mod_pack;
 	this->analyzing_mod_mgr = NULL;
 	this->cfg = cfg;
 	this->lock_api = lock_api;
 	this->ag = ag;
 	this->tg = tg;
+	this->lock_collection_mgr = new LockCollectionMgr(path_mgr, db_mgr);
 }
 
 LockCollector::~LockCollector() {
-	// Need to do nothing at present.
+	delete lock_collection_mgr;
+}
+
+void LockCollector::record(CallInst *lock_call, CallInst *unlock_call, Instruction *access_inst,
+							string lock_var, string unlock_var, string access_var) {
+	string file = getSourcePath(lock_call->getFunction()->getParent());
+	string func = lock_call->getFunction()->getName().str();
+	string lock_func = lock_call->getCalledFunction()->getName().str();
+	int lock_line = cfg->getCFGNode(lock_call)->getLine();
+	string unlock_func = unlock_call->getCalledFunction()->getName().str();
+	int unlock_line = cfg->getCFGNode(unlock_call)->getLine();
+	int access_line = cfg->getCFGNode(access_inst)->getLine();
+
+	LockCollectionRow lock_collection_row = {
+		file, func,
+		lock_func, lock_var, lock_line,
+		unlock_func, unlock_var, unlock_line,
+		access_var, access_line
+	};
+	lock_collection_mgr->insert(lock_collection_row);
 }
 
 vector<string> LockCollector::getAccessPath(Value *lock_val, 
@@ -35,7 +59,7 @@ vector<string> LockCollector::getAccessPath(Value *lock_val,
 
 	if (!lock_root || !unlock_root || !access_root || 
 				lock_root != access_root || unlock_root != access_root) {
-		vector<Value *> vals = {lock_root, unlock_root, access_root};
+		vector<Value *> vals = {lock_val, unlock_val, access_val};
 		AGNode *ancestor = ag->findNearestAncestor(vals, true);
 		if (ancestor == NULL) {
 			return {};
@@ -53,9 +77,9 @@ vector<string> LockCollector::getAccessPath(Value *lock_val,
 		unlock_offset_ag_path = unlock_val_path.second;
 		access_offset_ag_path = access_val_path.second;
 	}
-	string lock_path = tg->getTypePath(lock_val, lock_offset_ag_path);
-	string unlock_path = tg->getTypePath(unlock_val, unlock_offset_ag_path);
-	string access_path = tg->getTypePath(access_val, access_offset_ag_path);
+	string lock_path = tg->getTypePath(common_root, lock_offset_ag_path);
+	string unlock_path = tg->getTypePath(common_root, unlock_offset_ag_path);
+	string access_path = tg->getTypePath(common_root, access_offset_ag_path);
 	vector<string> access_paths = {lock_path, unlock_path, access_path};
 	return access_paths;
 }
@@ -69,35 +93,57 @@ void LockCollector::handleInst(CallInst *lock_inst, CallInst *unlock_inst, Instr
 		for (int op_idx = 0; op_idx < binary_inst->getNumOperands(); op_idx++) {
 			Value *op = binary_inst->getOperand(op_idx);
 			vector<string> access_paths = getAccessPath(lock_val, unlock_val, op);
+			if (!access_paths.empty()) {
+				record(lock_inst, unlock_inst, access_inst, access_paths[0], access_paths[1], access_paths[2]);
+			}
 		}
 	} else if (CallInst *call_inst = dyn_cast<CallInst>(access_inst)) {
 		for (int arg_idx = 0; arg_idx < call_inst->arg_size(); arg_idx++) {
 			Value *arg = call_inst->getArgOperand(arg_idx);
 			vector<string> access_paths = getAccessPath(lock_val, unlock_val, arg);
+			if (!access_paths.empty()) {
+				record(lock_inst, unlock_inst, access_inst, access_paths[0], access_paths[1], access_paths[2]);
+			}
 		}	
 	} else if (CmpInst *cmp_inst = dyn_cast<CmpInst>(access_inst)) {
 		for (int op_idx = 0; op_idx < cmp_inst->getNumOperands(); op_idx++) {
 			Value *op = cmp_inst->getOperand(op_idx);
 			vector<string> access_paths = getAccessPath(lock_val, unlock_val, op);
+			if (!access_paths.empty()) {
+				record(lock_inst, unlock_inst, access_inst, access_paths[0], access_paths[1], access_paths[2]);
+			}
 		}
 	} else if (ReturnInst *ret_inst = dyn_cast<ReturnInst>(access_inst)) {
 		Value *ret_val = ret_inst->getReturnValue();
 		if (ret_val != NULL) {
 			vector<string> access_paths = getAccessPath(lock_val, unlock_val, ret_val);
+			if (!access_paths.empty()) {
+				record(lock_inst, unlock_inst, access_inst, access_paths[0], access_paths[1], access_paths[2]);
+			}
 		}
 	} else if (StoreInst *store_inst = dyn_cast<StoreInst>(access_inst)) {
-		for (int op_idx = 0; op_idx < store_inst->getNumOperands(); op_idx++) {
+		// FIXME: Set op_idx to 0;
+		for (int op_idx = 1; op_idx < store_inst->getNumOperands(); op_idx++) {
 			Value *op = store_inst->getOperand(op_idx);
 			vector<string> access_paths = getAccessPath(lock_val, unlock_val, op);
+			if (!access_paths.empty()) {
+				record(lock_inst, unlock_inst, access_inst, access_paths[0], access_paths[1], access_paths[2]);
+			}
 		}
 	} else if (BranchInst *br_inst = dyn_cast<BranchInst>(access_inst)) {
 		if (br_inst->isConditional()) {
 			Value *cond_val = br_inst->getCondition();
 			vector<string> access_paths = getAccessPath(lock_val, unlock_val, cond_val);
+			if (!access_paths.empty()) {
+				record(lock_inst, unlock_inst, access_inst, access_paths[0], access_paths[1], access_paths[2]);
+			}
 		}
 	} else if (SwitchInst *sw_inst = dyn_cast<SwitchInst>(access_inst)) {
 		Value *cond_val = sw_inst->getCondition();
 		vector<string> access_paths = getAccessPath(lock_val, unlock_val, cond_val);
+		if (!access_paths.empty()) {
+			record(lock_inst, unlock_inst, access_inst, access_paths[0], access_paths[1], access_paths[2]);
+		}
 	} else {
 		// TODO: Handle other instructions.
 	}
@@ -141,7 +187,9 @@ void LockCollector::handleFunc(Function &func) {
 
 void LockCollector::handleMod(Module &mod) {
 	for (auto &func : mod) {
-		handleFunc(func);
+		if (!func.isDeclaration()) {
+			handleFunc(func);
+		}
 	}
 }
 

@@ -17,6 +17,7 @@ target_link_libraries(AliasAnalysis
 	spdlog::spdlog
 	ModMgr
 	Utils
+	miner_flags
 )
 
 target_include_directories(AliasAnalysis

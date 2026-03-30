@@ -1,6 +1,7 @@
 #include "CFG/CFG.h"
 
 #include <stack>
+#include <iostream>
 
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
@@ -128,6 +129,10 @@ CFGEdge::CFGEdge(CFGNode *src, CFGNode *dst, CFGEdge::EdgeType edge_type) {
 	this->edge_type = edge_type;
 }
 
+CFGEdge::~CFGEdge() {
+	// Need to do nothing at present.
+}
+
 CFGNode *CFGEdge::getSrc() {
 	return src;
 }
@@ -250,6 +255,8 @@ void CFG::createCFGEdge(Instruction *src_inst, Instruction *dst_inst,
 	CFGNode *src_node = getCFGNode(src_inst);
 	CFGNode *dst_node = getCFGNode(dst_inst);
 	CFGEdge *edge = new CFGEdge(src_node, dst_node, edge_type);
+	src_node->pushOutEdge(edge);
+	dst_node->pushInEdge(edge);
 	edge_set.insert(edge);
 }
 

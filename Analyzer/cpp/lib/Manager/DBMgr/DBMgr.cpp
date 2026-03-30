@@ -10,13 +10,15 @@ using namespace std;
  * Implementation of DBMgr
  */
 
-DBMgr::DBMgr(string db_path) {
+DBMgr::DBMgr(string db_path, size_t cache_size) {
 	db = NULL;
 	if (sqlite3_open(db_path.c_str(), &db) != SQLITE_OK) {
 		spdlog::error("DBMgr::DBMgr: Fail to open database: {}", db_path);
 	}
 	execSimple("PRAGMA journal_mode=WAL;");
 	execSimple("PRAGMA foreign_keys=ON;");
+	row_cache.clear();
+	this->cache_size = cache_size;
 }
 
 DBMgr::~DBMgr() {
@@ -70,6 +72,18 @@ bool DBMgr::rollback() {
 }
 
 bool DBMgr::execSql(const std::string &sql, const SqlParams &params) {
+	if (cache_size) {
+		if (row_cache.size() < cache_size) {
+			row_cache.push_back(params);
+			// FIXME: Return true without other checking may be wrong.
+			return true;
+		} else {
+			bool ret = execSqlBatch(sql, row_cache);
+			// FIXME: Clear whatever ret is true.
+			row_cache.clear();
+			return ret;
+		}
+	} 
 	sqlite3_stmt *stmt = nullptr;
 	if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
 		spdlog::error("DBMgr::execSql: Prepare failed.");

@@ -16,6 +16,7 @@ LockAPI::LockAPI(PathMgr *path_mgr, AliasGraph *ag) {
 	this->unlock2lock.clear();
 	this->lock_val_map.clear();
 	this->unlock_val_map.clear();
+	readLockAPIInfo();
 }
 
 LockAPI::~LockAPI() {

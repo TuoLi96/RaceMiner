@@ -13,4 +13,6 @@ find_package(SQLite3 REQUIRED)
 target_link_libraries(DBMgr
     PUBLIC
         SQLite::SQLite3
+		Utils
+		miner_flags
 )

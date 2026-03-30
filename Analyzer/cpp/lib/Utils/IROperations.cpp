@@ -1,8 +1,10 @@
 #include "Utils/IROperations.h"
 #include "Constants.h"
 
+#include "llvm/IR/Module.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 
 using namespace std;
 using namespace llvm;
@@ -24,7 +26,7 @@ vector<ValPathStep> getValPath(Value *val) {
 			}
 			path.push_back({gep_inst, offset});
 		} else if (CastInst *cast_inst = dyn_cast<CastInst>(val)) {
-			val = gep_inst->getOperand(0);
+			val = cast_inst->getOperand(0);
 		} else {
 			break;
 		}
@@ -99,4 +101,22 @@ DIVariable *getDbgVar(Value *val) {
 		}
 	}
 	return first_dbg_var;
+}
+
+string getSourcePath(Module *mod) {
+	if (auto *CUs = mod->getNamedMetadata("llvm.dbg.cu")) {
+		for (auto *Op : CUs->operands()) {
+			auto *CU = dyn_cast<DICompileUnit>(Op);
+			if (!CU) {
+				continue;
+			}
+			DIFile *file = CU->getFile();
+			if (!file) {
+				continue;
+			}
+			string mod_path = (file->getDirectory() + "/" + file->getFilename()).str();
+			return mod_path;
+		}
+	}
+	return "";
 }

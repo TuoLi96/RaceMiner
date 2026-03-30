@@ -20,9 +20,11 @@ using SqlParams = std::vector<SqlValue>;
 class DBMgr {
 private:
 	sqlite3 *db;
+	std::vector<SqlParams> row_cache;
+	size_t cache_size;
 
 public:	
-	DBMgr(std::string db_path);
+	DBMgr(std::string db_path, size_t cache_size = 0);
 	~DBMgr();
 
 private:

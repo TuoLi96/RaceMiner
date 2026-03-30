@@ -18,7 +18,7 @@ using namespace llvm;
  */
 
 TypeNode::TypeNode(string type_name) {
-	this->node_type == TypeNode::NodeType::Default;
+	this->node_type = TypeNode::NodeType::Default;
 	this->type_name = type_name;
 	this->aliased_type_names.clear();
 	this->val_set.clear();
@@ -294,7 +294,7 @@ TypeNode *TypeGraph::getTypeNode(DIType *ditype) {
 
 void TypeGraph::createTypeEdge(TypeNode *src, TypeNode *dst, int offset, string field) {
 	if (dst->isBasic()) {
-		return;
+		//return;
 	}
 	TypeEdge *new_tyedge = new TypeEdge(src, dst, offset, field);
 	src->addOutEdge(offset, field, new_tyedge);
@@ -418,7 +418,7 @@ void TypeGraph::handleDISubroutineType(DISubroutineType *subroutine_ditype) {
 }
 
 void TypeGraph::handleDIBasicType(DIBasicType *basic_ditype) {
-	TypeNode *basic_tynode = getTypeNode(basic_ditype);
+	getTypeNode(basic_ditype);
 }
 
 void TypeGraph::handleDIType(DIType *ditype) {
@@ -496,7 +496,7 @@ string TypeGraph::getFieldPath(Value *val, vector<int> &offset_vec) {
 }
 
 void TypeGraph::analyze() {
-	for (size_t mod_i = 0 ; mod_i < mod_pack->getNumMgrs(); mod_i++) {
+	for (int mod_i = 0 ; mod_i < mod_pack->getNumMgrs(); mod_i++) {
 		analyzing_mod_mgr = mod_pack->getMgr(mod_i);
 		Module *mod = analyzing_mod_mgr->getMod();
 		handleMod(mod);
@@ -510,7 +510,11 @@ string TypeGraph::getTypePath(Value *val, vector<int> &offset_vec) {
 	}
 	DIType *ditype = dbg_var->getType();
 	TypeNode *tynode = getTypeNode(ditype);
-	return tynode->getTypeName() + getFieldPath(val, offset_vec);
+	string type_name = tynode->getTypeName();
+	if (!type_name.empty() && type_name[0] == '*') {
+		type_name.erase(0, 1);
+	}
+	return type_name + getFieldPath(val, offset_vec);
 }
 
 string TypeGraph::getNamePath(Value *val, vector<int> &offset_vec) {
@@ -538,7 +542,7 @@ void TypeGraph::dumpDot(string dot_file) {
 
 	for (auto tynode : tynode_set) {
 		if (tynode->isBasic()) {
-			continue;
+			//continue;
 		}
 		tynode_id[tynode] = id;
 		ofs << tynode->toDotNode(id) << "\n";
@@ -549,7 +553,7 @@ void TypeGraph::dumpDot(string dot_file) {
 		TypeNode *src = tyedge->getSrc();
 		TypeNode *dst = tyedge->getDst();
 		if (dst->isBasic()) {
-			continue;
+			//continue;
 		}
 
 		ofs << tyedge->toDotEdge(

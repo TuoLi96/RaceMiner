@@ -1,2 +1,16 @@
 **/build/
+**/bin/
 *.swp
+
+WorkDir/*
+!WorkDir/config/
+!WorkDir/config/**
+
+TestSuite/*
+!TestSuite/*/
+!TestSuite/Makefile
+!TestSuite/*.c
+!TestSuite/*.h
+!TestSuite/**/Makefile
+!TestSuite/**/*.c
+!TestSuite/**/*.h

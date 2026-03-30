@@ -14,6 +14,7 @@ target_link_libraries(ConcAPI
     ${LLVM_LIBS}
 	spdlog::spdlog
 	ModMgr
+	miner_flags
 )
 
 target_include_directories(ConcAPI

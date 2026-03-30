@@ -253,7 +253,7 @@ AGNode *AliasGraph::findNearestAncestor(vector<AGNode *> &nodes, bool should_anc
 		}
 		int total_dist = d0;
 		bool is_valid = true;
-		for (int dist_idx = 1; dist_idx < all_dist.size(); dist_idx++) {
+		for (size_t dist_idx = 1; dist_idx < all_dist.size(); dist_idx++) {
 			if (!all_dist[dist_idx].count(node)) {
 				is_valid = false;
 				break;
@@ -271,13 +271,13 @@ AGNode *AliasGraph::findNearestAncestor(vector<AGNode *> &nodes, bool should_anc
 AGNode *AliasGraph::findNearestAncestor(vector<Value *> &vals, bool should_anchor) {
 	vector<AGNode *> nodes;
 	for (auto val : vals) {
-		AGNode *node1 = getAGNode(val);
-		nodes.push_back(node1);
+		AGNode *node = getAGNode(val);
+		nodes.push_back(node);
 	}
 	return findNearestAncestor(nodes, should_anchor);
 }
 
-vector<AGPathStep> getAGPath(AGNode *src, AGNode *dst) {
+vector<AGPathStep> AliasGraph::getAGPath(AGNode *src, AGNode *dst) {
 	unordered_map<AGNode *, pair<AGNode *, AGEdge *> > parent;
 	queue<AGNode *> work_queue;
 

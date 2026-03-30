@@ -68,7 +68,7 @@ private:
 
 public:
 	AliasGraph();
-	~AliasGraph();
+	virtual ~AliasGraph();
 
 private:
 	std::unordered_map<AGNode *, int> getBackDist(AGNode *dst);

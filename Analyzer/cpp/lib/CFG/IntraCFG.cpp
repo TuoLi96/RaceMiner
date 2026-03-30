@@ -46,7 +46,9 @@ void IntraCFG::createNodeForFunc(Function &func) {
 
 void IntraCFG::createNodeForMod(Module &mod) {
 	for (auto &func : mod) {
-		createNodeForFunc(func);
+		if (!func.isDeclaration()) {
+			createNodeForFunc(func);
+		}
 	}
 }
 
@@ -75,13 +77,13 @@ void IntraCFG::createEdgeForBlock(BasicBlock &blk) {
 	}
 	Instruction *term_inst = blk.getTerminator();
 	if (BranchInst *br_inst = dyn_cast<BranchInst>(term_inst)) {
-		for (int succ_idx = 0; succ_idx < br_inst->getNumSuccessors(); succ_idx++) {
+		for (size_t succ_idx = 0; succ_idx < br_inst->getNumSuccessors(); succ_idx++) {
 			BasicBlock *succ_blk = br_inst->getSuccessor(succ_idx);
 			Instruction *succ_inst = &(*(succ_blk->begin()));
 			createCFGEdge(br_inst, succ_inst, CFGEdge::EdgeType::Branch);
 		}
 	} else if (SwitchInst *sw_inst = dyn_cast<SwitchInst>(term_inst)) {
-		for (int succ_idx = 0; succ_idx < sw_inst->getNumSuccessors(); succ_idx++) {
+		for (size_t succ_idx = 0; succ_idx < sw_inst->getNumSuccessors(); succ_idx++) {
 			BasicBlock *succ_blk = sw_inst->getSuccessor(succ_idx);
 			Instruction *succ_inst = &(*(succ_blk->begin()));
 			createCFGEdge(sw_inst, succ_inst, CFGEdge::EdgeType::Switch);

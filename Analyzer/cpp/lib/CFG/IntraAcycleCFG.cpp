@@ -124,6 +124,7 @@ void IntraAcycleCFG::topoSort() {
 void IntraAcycleCFG::build() {
 	IntraCFG::build();
 	breakCycle();
+	breakRemainCycle();
 	topoSort();
 }
 
