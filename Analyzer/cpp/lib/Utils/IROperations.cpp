@@ -1,9 +1,16 @@
 #include "Utils/IROperations.h"
 #include "Constants.h"
 
+#include "llvm/IR/Value.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/Type.h"
+#include "llvm/IR/Metadata.h"
+#include "llvm/IR/ModuleSlotTracker.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 
 using namespace std;
@@ -119,4 +126,42 @@ string getSourcePath(Module *mod) {
 		}
 	}
 	return "";
+}
+
+static string getRawStr(const function<void(raw_ostream &)> &Fn) {
+	string str;
+	raw_string_ostream OS(str);
+	Fn(OS);
+	return OS.str();
+}
+
+string val2str(Value *val) {
+	if (Instruction *inst = dyn_cast<Instruction>(val)) {
+		return getRawStr([&](raw_ostream &OS) {
+			inst->print(OS);
+		});
+	} else if (BasicBlock *blk = dyn_cast<BasicBlock>(val)) {
+		return getRawStr([&](raw_ostream &OS) {
+			blk->print(OS);
+		});
+	} else if (Function *func = dyn_cast<Function>(val)) {
+		return getRawStr([&](raw_ostream &OS) {
+			func->print(OS);
+		});
+	} else {
+		return getRawStr([&](raw_ostream &OS) {
+			val->print(OS);
+		});
+	}
+}
+
+string dbg2str(Metadata *MD, Module *mod, Function *func) {
+	return getRawStr([&](raw_ostream &OS) {
+		ModuleSlotTracker MST(mod);
+		if (func) {
+			MST.incorporateFunction(*func);
+		}
+
+		MD->print(OS, MST, mod);
+	});
 }

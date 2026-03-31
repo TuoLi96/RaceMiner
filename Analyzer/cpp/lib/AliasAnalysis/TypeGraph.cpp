@@ -364,6 +364,10 @@ void TypeGraph::handleDIPointerType(DIDerivedType *pointer_ditype) {
 
 void TypeGraph::handleDITypedef(DIDerivedType *typedef_ditype) {
 	DIType *base_ditype = typedef_ditype->getBaseType();
+	if (!base_ditype) {
+		createTypeNode(typedef_ditype);
+		return;
+	}
 	if (base_ditype->getTag() == dwarf::Tag::DW_TAG_typedef) {
 		handleDITypedef(dyn_cast<DIDerivedType>(base_ditype));
 	}

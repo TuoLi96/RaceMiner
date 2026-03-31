@@ -47,8 +47,11 @@ int main(int argc, char *argv[]) {
 		DBMgr *db_mgr = new DBMgr(path_mgr->getCompileDBPath());
 		LinkMgr *link_mgr = new LinkMgr(path_mgr, db_mgr);
 		vector<LinkRow> link_rows = link_mgr->selectAll();
+		size_t total = link_rows.size();
+		size_t link_idx = 1;
 		for (auto link_row : link_rows) {
-			cout << "Analyzing: " << link_row.target_file << endl;
+			cout << "Analyzing(" << link_idx << "/" << total << 
+							"): " << link_row.target_file << endl;
 			string ir_list = link_row.ir_list;
 			istringstream iss(ir_list);
 			vector<string> ir_vec;
@@ -62,6 +65,7 @@ int main(int argc, char *argv[]) {
 			}
 			analyze(path_mgr, mod_pack);
 			delete mod_pack;
+			link_idx++;
 		}
 		delete link_mgr;
 		delete db_mgr;
