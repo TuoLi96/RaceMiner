@@ -91,7 +91,7 @@ bool DBMgr::execSql(const std::string &sql, const SqlParams &params) {
 	}
 	for (size_t param_idx = 0; param_idx < params.size(); param_idx++) {
 		if (!bindValue(stmt, param_idx + 1, params[param_idx])) {
-			spdlog::error("DBMgr::execSql: Bint failed at param {}", param_idx + 1);
+			spdlog::error("DBMgr::execSql: Bind failed at param {}", param_idx + 1);
 			sqlite3_finalize(stmt);
 			return false;
 		}
@@ -101,6 +101,11 @@ bool DBMgr::execSql(const std::string &sql, const SqlParams &params) {
 		spdlog::error("DBMgr::execSql: Execution failed.");
 		sqlite3_finalize(stmt);
 		return false;
+	} else {
+		int changes = sqlite3_changes(db);
+		if (changes > 0) {
+			spdlog::debug("DBMgr::execSql: Repeated insert.");
+		}
 	}
 	sqlite3_finalize(stmt);
 	return true;

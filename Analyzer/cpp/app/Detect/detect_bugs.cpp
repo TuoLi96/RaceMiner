@@ -52,6 +52,9 @@ int main(int argc, char *argv[]) {
 		for (auto link_row : link_rows) {
 			cout << "Analyzing(" << link_idx << "/" << total << 
 							"): " << link_row.target_file << endl;
+			/*if (link_row.target_file.find("lib/tests") == string::npos) {
+				continue;
+			}*/
 			string ir_list = link_row.ir_list;
 			istringstream iss(ir_list);
 			vector<string> ir_vec;

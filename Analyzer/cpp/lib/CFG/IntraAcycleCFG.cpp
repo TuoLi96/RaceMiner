@@ -4,6 +4,8 @@
 #include "llvm/Analysis/LoopInfo.h"
 
 #include <unordered_map>
+#include <unordered_set>
+#include <stack>
 #include <queue>
 
 #include <spdlog/spdlog.h>
@@ -25,7 +27,7 @@ IntraAcycleCFG::~IntraAcycleCFG() {
 	// Need to do nothing at present.
 }
 
-void IntraAcycleCFG::breakRemainCycle() {
+/*void IntraAcycleCFG::breakRemainCycle() {
 	auto &node_set = getNodeSet();
 	unordered_map<CFGNode *, int> color;
 	for (auto node : node_set) {
@@ -52,6 +54,67 @@ void IntraAcycleCFG::breakRemainCycle() {
 		if (color[node] == 0) {
 			DFS(node);
 		}
+	}
+}*/
+
+void IntraAcycleCFG::breakRemainCycle() {
+	struct Frame {
+		CFGNode *node;
+		int next_out_idx;
+	};
+
+	auto &node_set = getNodeSet();
+	unordered_map<CFGNode *, int> color;
+	vector<CFGEdge *> to_delete;
+	unordered_set<CFGEdge *> to_delete_set;
+
+	for (auto node : node_set) {
+		color[node] = 0;
+	}
+
+	for (auto start : node_set) {
+		if (!start || color[start] != 0) {
+			continue;
+		}
+		stack<Frame> stk;
+		stk.push({start, 0});
+		color[start] = 1;
+
+		while (!stk.empty()) {
+			Frame &top = stk.top();
+			CFGNode *u = top.node;
+
+			if (top.next_out_idx >= u->getNumOuts()) {
+				color[u] = 2;
+				stk.pop();
+				continue;
+			}
+
+			CFGEdge *edge = u->getOutEdge(top.next_out_idx);
+			top.next_out_idx++;
+
+			if (!edge) {
+				continue;
+			}
+
+			CFGNode *v = edge->getDst();
+			if (!v) {
+				continue;
+			}
+
+			if (color[v] == 0) {
+				stk.push({v, 0});
+				color[v] = 1;
+			} else if (color[v] == 1) {
+				if (!to_delete_set.count(edge)) {
+					to_delete.push_back(edge);
+					to_delete_set.insert(edge);
+				}
+			}
+		}
+	}
+	for (auto edge : to_delete) {
+		deleteEdge(edge);
 	}
 }
 
