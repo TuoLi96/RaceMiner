@@ -24,7 +24,7 @@ bool LockCollectionMgr::insert(LockCollectionRow &row) {
 	SqlParams sql_params = {row.file, row.func, 
 					row.lock_func, row.lock_var, row.lock_line,
 					row.unlock_func, row.unlock_var, row.unlock_line,
-					row.access_var, row.access_line};
+					row.access_var, row.access_line, row.access_type};
 	string tbl_insert_lock_collection = path_mgr->getTblInsertLockCollection();
 	string tbl_insert_lock_collection_sql = loadSql(tbl_insert_lock_collection);
 	return db_mgr->execSql(tbl_insert_lock_collection_sql, sql_params);
@@ -39,7 +39,7 @@ bool LockCollectionMgr::insertBatch(vector<LockCollectionRow> &row_vec) {
 		params_list.push_back({row.file, row.func,
 					row.lock_func, row.lock_var, row.lock_line,
 					row.unlock_func, row.unlock_var, row.unlock_line,
-					row.access_var, row.access_line});
+					row.access_var, row.access_line, row.access_type});
 	}
 	string tbl_insert_lock_collection = path_mgr->getTblInsertLockCollection();
 	string tbl_insert_lock_collection_sql = loadSql(tbl_insert_lock_collection);
@@ -67,6 +67,7 @@ vector<LockCollectionRow> LockCollectionMgr::selectAll() {
 		row.unlock_line = get_column_int(stmt, 7);
 		row.access_var = get_column_text(stmt, 8);;
 		row.access_line = get_column_int(stmt, 9);
+		row.access_type = get_column_text(stmt, 10);
 
 		results.push_back(row);
 	}

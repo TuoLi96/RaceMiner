@@ -81,6 +81,7 @@ private:
 	std::set<CFGNode *> node_set;
 	std::set<CFGEdge *> edge_set;
 	llvm::DenseMap<llvm::Instruction *, CFGNode *> inst2node;
+	llvm::DenseMap<llvm::Function *, std::vector<CFGNode *> > func2nodes;
 	std::vector<CFGNode *> entry_vec;
 
 public:

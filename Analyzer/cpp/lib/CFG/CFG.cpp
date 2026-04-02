@@ -247,6 +247,7 @@ void CFG::createCFGNode(Instruction *inst, CFGNode::NodeType node_type) {
 	}
 	CFGNode *new_node = new CFGNode(inst, node_type);
 	inst2node[inst] = new_node;
+	func2nodes[inst->getFunction()].push_back(new_node);
 	node_set.insert(new_node);
 }
 

@@ -18,6 +18,7 @@ struct LockCollectionRow {
 	int unlock_line;
 	std::string access_var;
 	int access_line;
+	std::string access_type;
 };
 
 class LockCollectionMgr : public TBLMgr {

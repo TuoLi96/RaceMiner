@@ -3,6 +3,7 @@
 
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
+#include "llvm/ADT/DenseMap.h"
 
 #include "CFG/CFG.h"
 #include "CFG/IntraCFG.h"
@@ -12,6 +13,7 @@ class IntraAcycleCFG : public IntraCFG {
 private:
 	ModPack *mod_pack;
 	ModMgr *analyzing_mod_mgr;
+	llvm::DenseMap<llvm::Function *, std::vector<CFGNode *> > func2topo_vec;
 	std::vector<CFGNode *> topo_vec;
 
 public:
@@ -29,6 +31,8 @@ public:
 	void build();
 	int getNumTopoNodes();
 	CFGNode *getTopoNode(int topo_idx);
+
+	std::vector<CFGNode *> &getTopoVecOfFunc(llvm::Function *func);
 };
 
 #endif

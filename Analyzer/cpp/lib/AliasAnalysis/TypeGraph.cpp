@@ -455,6 +455,7 @@ void TypeGraph::handleMod(Module *mod) {
 			case dwarf::Tag::DW_TAG_enumeration_type:
 			case dwarf::Tag::DW_TAG_volatile_type:
 			case dwarf::Tag::DW_TAG_subroutine_type:
+			case dwarf::Tag::DW_TAG_restrict_type:
 				createTypeNode(ditype);
 				break;
 			default:

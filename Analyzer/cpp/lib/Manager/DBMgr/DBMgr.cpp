@@ -2,6 +2,7 @@
 
 #include <string>
 #include <fstream>
+#include <iostream>
 #include <spdlog/spdlog.h>
 
 using namespace std;
@@ -59,6 +60,24 @@ bool DBMgr::bindValue(sqlite3_stmt *stmt, int index, const SqlValue &val) {
 	}, val);
 }
 
+std::string DBMgr::params2str(const SqlParams &sql_params) {
+	string result;
+	for (auto &param : sql_params) {
+		string param_str = std::visit([](const auto &x) -> string {
+			using T = decay_t<decltype(x)>;
+			if constexpr (is_same_v<T, nullptr_t>) {
+				return "NULL";
+			} else if constexpr (is_same_v<T, string>) {
+				return x;
+			} else {
+				return to_string(x);
+			}
+		}, param);
+		result = result + param_str + " ";
+	}
+	return result;
+}
+
 bool DBMgr::beginTransaction() {
 	return execSimple("BEGIN TRANSACTION;");
 }
@@ -103,8 +122,8 @@ bool DBMgr::execSql(const std::string &sql, const SqlParams &params) {
 		return false;
 	} else {
 		int changes = sqlite3_changes(db);
-		if (changes > 0) {
-			spdlog::debug("DBMgr::execSql: Repeated insert.");
+		if (changes == 0) {
+			//spdlog::warn("DBMgr::execSql: Repeated insert:\n {}", params2str(params));
 		}
 	}
 	sqlite3_finalize(stmt);

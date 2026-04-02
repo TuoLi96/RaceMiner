@@ -169,6 +169,7 @@ void IntraAcycleCFG::topoSort() {
 		CFGNode *node = work_queue.front();
 		work_queue.pop();
 		topo_vec.push_back(node);
+		func2topo_vec[node->getInst()->getFunction()].push_back(node);
 
 		for (int out_idx = 0; out_idx < node->getNumOuts(); out_idx++) {
 			CFGNode *out_node = node->getOutNode(out_idx);
@@ -197,4 +198,8 @@ int IntraAcycleCFG::getNumTopoNodes() {
 
 CFGNode *IntraAcycleCFG::getTopoNode(int topo_idx) {
 	return topo_vec[topo_idx];
+}
+
+vector<CFGNode *> &IntraAcycleCFG::getTopoVecOfFunc(Function *func) {
+	return func2topo_vec[func];
 }

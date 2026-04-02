@@ -30,6 +30,7 @@ public:
 private:
 	std::string loadSql(std::string sql_path);
 	bool bindValue(sqlite3_stmt *stmt, int index, const SqlValue &val);
+	std::string params2str(const SqlParams &sql_params);
 	bool beginTransaction();
 	bool commit();
 	bool rollback();

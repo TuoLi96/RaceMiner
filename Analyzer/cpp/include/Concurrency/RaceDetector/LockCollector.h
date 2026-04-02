@@ -37,7 +37,7 @@ public:
 private:
 	void record(llvm::CallInst *lock_call, llvm::CallInst *unlock_call, 
 					llvm::Instruction *access_inst, std::string lock_var,
-					std::string unlock_var, std::string access_var);
+					std::string unlock_var, std::string access_var, std::string access_type);
 	std::vector<std::string> getAccessPath(llvm::Value *lock_val, 
 								llvm::Value *unlock_val, llvm::Value *access_val);
 	void handleInst(llvm::CallInst *lock_inst, llvm::CallInst *unlock_inst,

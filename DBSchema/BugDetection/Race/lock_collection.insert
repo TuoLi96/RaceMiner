@@ -8,8 +8,9 @@ INSERT INTO lock_collection (
 	unlock_var,
 	unlock_line,
 	access_var,
-	access_line
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	access_line,
+	access_type
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (
 	file,
 	func,
@@ -20,5 +21,6 @@ ON CONFLICT (
 	unlock_var,
 	unlock_line,
 	access_var,
-	access_line
+	access_line,
+	access_type
 ) DO NOTHING;
