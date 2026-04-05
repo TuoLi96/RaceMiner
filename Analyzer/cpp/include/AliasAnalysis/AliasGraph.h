@@ -37,6 +37,8 @@ public:
 	const std::map<int, AGEdge*> &getOutEdges() const;
 	AGEdge *getOutEdgeByOffset(int offset);
 	AGNode *getOutNodeByOffset(int offset);
+
+	std::string toDotNode(size_t id);
 };
 
 class AGEdge {
@@ -53,6 +55,8 @@ public:
 	AGNode *getSrc();
 	AGNode *getDst();
 	int getOffset();
+
+	std::string toDotEdge(size_t src_id, size_t dst_id);
 };
 
 struct AGPathStep {
@@ -87,6 +91,9 @@ public:
 	AGNode *findNearestAncestor(std::vector<llvm::Value *> &vals, bool should_anchor=true);
 	std::vector<AGPathStep> getAGPath(AGNode *src, AGNode *dst);
 	std::vector<int> getOffsetAGPath(AGNode *src, AGNode *dst);
+
+	void dumpDot(std::string dot_name);
+	void dumpSvg(std::string svg_name);
 };
 
 #endif

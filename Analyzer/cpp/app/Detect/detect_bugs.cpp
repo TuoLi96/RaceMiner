@@ -23,6 +23,7 @@ static void analyze(PathMgr *path_mgr, ModPack *mod_pack) {
 	type_graph->analyze();
 	Steensgaard *steen = new Steensgaard(mod_pack);
 	steen->build();
+	steen->dumpSvg("alias.svg");
 	LockAPI *lock_api = new LockAPI(path_mgr, steen);
 	LockCollector *lock_collector = new LockCollector(mod_pack, path_mgr, 
 							intra_acfg, lock_api, steen, type_graph, db_mgr);

@@ -5,6 +5,8 @@
 
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/Instructions.h"
+#include "llvm/IR/Constants.h"
 #include "llvm/IR/Value.h"
 #include "llvm/IR/DebugInfo.h" 
 
@@ -21,5 +23,8 @@ std::string getSourcePath(llvm::Module *mod);
 
 std::string val2str(llvm::Value *val);
 std::string dbg2str(llvm::Metadata *MD, llvm::Module *mod, llvm::Function *func = NULL);
+
+bool isDbgCall(llvm::Instruction *inst);
+bool isConstant(llvm::Value *val);
 
 #endif

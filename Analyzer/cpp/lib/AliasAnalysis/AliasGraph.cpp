@@ -1,7 +1,10 @@
 #include "AliasAnalysis/AliasGraph.h"
+#include "Constants.h"
 
 #include <queue>
 #include <unordered_map>
+#include <iostream>
+#include <fstream>
 
 #include "llvm/IR/Instructions.h"
 
@@ -91,6 +94,30 @@ AGNode *AGNode::getOutNodeByOffset(int offset) {
 	}
 }
 
+string AGNode::toDotNode(size_t id) {
+	string node_str;
+	node_str += "node" + to_string(id);
+	node_str += " [shape=plaintext label=<";
+	node_str += "<TABLE BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\">";
+
+	node_str += "<TR><TD BGCOLOR=\"lightgray\">";
+	node_str += to_string(id);
+	node_str += "</TD></TR>";
+
+	node_str += "<TR><TD></TD></TR>";
+
+	for (auto &alias : alias_set) {
+		node_str += "<TR><TD ALIGN=\"LEFT\">";
+		node_str += alias->getName().str();
+		node_str += "</TD></TR>";
+	}
+
+	node_str += "</TABLE>";
+	node_str += ">];";
+
+	return node_str;
+}
+
 
 /*
  * Implementation of AGEdge
@@ -116,6 +143,32 @@ AGNode *AGEdge::getDst() {
 
 int AGEdge::getOffset() {
 	return offset;
+}
+
+string AGEdge::toDotEdge(size_t src_id, size_t dst_id) {
+	string edge_str;
+	string offset_str;
+	if (offset == REF_OFFSET) {
+		offset_str = "ref";
+	} else if (offset == GEP_OFFSET) {
+		offset_str = "gep";
+	} else {
+		offset_str = to_string(offset);
+	}
+
+	edge_str += "node" + to_string(src_id);
+	edge_str += " -> ";
+	edge_str += "node" + to_string(dst_id);
+
+	edge_str += " [label=\"";
+	edge_str += offset_str;
+	edge_str += " : ";
+	edge_str += to_string(offset);
+	edge_str += "\"]";
+
+	edge_str += ";";
+
+	return edge_str;
 }
 
 
@@ -180,54 +233,172 @@ AGNode *AliasGraph::getAGNode(Value *val) {
 }
 
 void AliasGraph::compact(UnionFind<AGNode *> &uf) {
-	DenseMap<AGNode *, AGNode *> new_agnode_map;
-	set<AGNode *> old_agnode_set = std::move(agnode_set);
-	set<AGEdge *> old_agedge_set = std::move(agedge_set);
-	DenseMap<Value *, AGNode *> old_val2node = std::move(val2node);
-	agnode_set.clear();
-	agedge_set.clear();
-	val2node.clear();
-	// Alloca new AGNode for each representative AGNode.
-	// Map each old AGNode to the new one.
-	for (auto &old_agnode : old_agnode_set) {
-		AGNode *rep_old_agnode = uf.find(old_agnode);
-		auto new_agnode_finder = new_agnode_map.find(rep_old_agnode);
-		if (new_agnode_finder != new_agnode_map.end()) {
-			new_agnode_map[old_agnode] = new_agnode_finder->second;
-		} else {
-			AGNode *new_agnode = new AGNode();
-			new_agnode_map[old_agnode] = new_agnode;
-			new_agnode_map[rep_old_agnode] = new_agnode;
-			agnode_set.insert(new_agnode);
+	// Add all nodes to the union-find set.
+	for (AGNode *node : agnode_set) {
+		uf.add(node);
+	}
+	// Initialize the worklist.
+	queue<AGNode *> worklist;
+	unordered_set<AGNode *> in_worklist;
+
+	for (AGNode *rep : uf.getRoots()) {
+		rep = uf.find(rep);
+		if (!in_worklist.count(rep)) {
+			worklist.push(rep);
+			in_worklist.insert(rep);
 		}
 	}
-	// Rebuild AGEdges
-	for (auto &old_agedge : old_agedge_set) {
-		AGNode *old_src = old_agedge->getSrc();
-		AGNode *old_dst = old_agedge->getDst();
-		int offset = old_agedge->getOffset();
-		AGNode *new_src = new_agnode_map[old_src];
-		AGNode *new_dst = new_agnode_map[old_dst];
+
+	// Worklist analysis.
+	while (!worklist.empty()) {
+		AGNode *rep = worklist.front();
+		worklist.pop();
+
+		rep = uf.find(rep);
+		in_worklist.erase(rep);
+
+		const auto &members = uf.getMembers(rep);
+
+		unordered_map<int, vector<AGNode *> > offset2dsts;
+
+		for (AGNode *node : members) {
+			const auto &out_edges = node->getOutEdges();
+
+			for (const auto &[offset, edge] : out_edges) {
+				if (!edge) {
+					continue;
+				}
+
+				AGNode *dst = edge->getDst();
+				if (!dst) {
+					continue;
+				}
+
+				offset2dsts[offset].push_back(dst);
+			}
+		}
+
+		for (auto &[offset, dsts] : offset2dsts) {
+			if (dsts.size() <= 1) {
+				continue;
+			}
+
+			AGNode *base_rep = uf.find(dsts[0]);
+
+			for (size_t i = 1; i < dsts.size(); ++i) {
+				AGNode *cur_rep = uf.find(dsts[i]);
+				base_rep = uf.find(base_rep);
+
+				if (base_rep == cur_rep) {
+					continue;
+				}
+
+				AGNode *new_rep = uf.unite(base_rep, cur_rep);
+				new_rep = uf.find(new_rep);
+
+				if (!in_worklist.count(new_rep)) {
+					worklist.push(new_rep);
+					in_worklist.insert(new_rep);
+				}
+
+				base_rep = new_rep;
+			}
+		}
+	}
+
+	// Create new AGNode.
+	unordered_map<AGNode *, AGNode *> rep2newnode;
+
+	for (AGNode *old_node : agnode_set) {
+		AGNode *rep = uf.find(old_node);
+
+		if (rep2newnode.find(rep) == rep2newnode.end()) {
+			rep2newnode[rep] = new AGNode();
+		}
+
+		AGNode *new_node = rep2newnode[rep];
+		for (llvm::Value *val : old_node->getAliasSet()) {
+			new_node->insertVal(val);
+		}
+	}
+
+	// Create new AGNode and AGEdge.
+	set<AGNode *> new_agnode_set;
+	set<AGEdge *> new_agedge_set;
+	llvm::DenseMap<llvm::Value *, AGNode *> new_val2node;
+
+	for (auto &[rep, new_node] : rep2newnode) {
+		new_agnode_set.insert(new_node);
+
+		for (llvm::Value *val : new_node->getAliasSet()) {
+			new_val2node[val] = new_node;
+		}
+	}
+
+	struct EdgeKey {
+		AGNode *src;
+		AGNode *dst;
+		int offset;
+
+		bool operator==(const EdgeKey &other) const {
+			return src == other.src &&
+				   dst == other.dst &&
+				   offset == other.offset;
+		}
+	};
+
+	struct EdgeKeyHash {
+		size_t operator()(const EdgeKey &k) const {
+			size_t h1 = std::hash<AGNode *>()(k.src);
+			size_t h2 = std::hash<AGNode *>()(k.dst);
+			size_t h3 = std::hash<int>()(k.offset);
+			return h1 ^ (h2 << 1) ^ (h3 << 2);
+		}
+	};
+
+	unordered_set<EdgeKey, EdgeKeyHash> edge_seen;
+
+	for (AGEdge *old_edge : agedge_set) {
+		if (!old_edge) {
+			continue;
+		}
+
+		AGNode *old_src = old_edge->getSrc();
+		AGNode *old_dst = old_edge->getDst();
+		int offset = old_edge->getOffset();
+
+		if (!old_src || !old_dst) {
+			continue;
+		}
+
+		AGNode *new_src = rep2newnode[uf.find(old_src)];
+		AGNode *new_dst = rep2newnode[uf.find(old_dst)];
+
+		EdgeKey key{new_src, new_dst, offset};
+		if (edge_seen.count(key)) {
+			continue;
+		}
+		edge_seen.insert(key);
+
 		AGEdge *new_edge = new AGEdge(new_src, new_dst, offset);
+		new_agedge_set.insert(new_edge);
+
 		new_src->pushOutEdge(offset, new_edge);
 		new_dst->pushInEdge(new_edge);
-		agedge_set.insert(new_edge);
 	}
-	// Map Values to new AGNode
-	for (auto &kv : old_val2node) {
-		Value *val = kv.first;
-		AGNode *old_agnode = kv.second;
-		AGNode *new_agnode = new_agnode_map[old_agnode];
-		val2node[val] = new_agnode;
-		new_agnode->insertVal(val);
+
+	// Release old agnode_set and agedge_set.
+	for (AGNode *node : agnode_set) {
+		delete node;
 	}
-	// Release old AGNode and AGEdge
-	for (auto &old_agnode : old_agnode_set) {
-		delete old_agnode;
+
+	for (AGEdge *edge : agedge_set) {
+		delete edge;
 	}
-	for (auto &old_agedge : old_agedge_set) {
-		delete old_agedge;
-	}
+
+	agedge_set = std::move(new_agedge_set);
+	agnode_set = std::move(new_agnode_set);
+	val2node = std::move(new_val2node);
 }
 
 bool AliasGraph::isAlias(Value *val1, Value *val2) {
@@ -327,7 +498,55 @@ vector<int> AliasGraph::getOffsetAGPath(AGNode *src, AGNode *dst) {
 			// NOTE: This NULL edge is introduced in getAGPath for src parent.
 			continue;
 		}
-		offset_path.push_back(path_step.edge->getOffset());
+		int offset = path_step.edge->getOffset();
+		offset_path.push_back(offset);
 	}
 	return offset_path;
 }
+
+void AliasGraph::dumpDot(string dot_file) {
+	ofstream ofs(dot_file);
+
+	ofs << "digraph TypeGraph {\n";
+
+	ofs << "rankdir=LR;\n";
+	ofs << "splines=true;\n";
+	ofs << "overlap=false;\n";
+	ofs << "nodesep=0.6;\n";
+	ofs << "ranksep=1.0;\n";
+
+	unordered_map<AGNode*, size_t> agnode_id;
+
+	size_t id = 0;
+
+	for (auto agnode : agnode_set) {
+		agnode_id[agnode] = id;
+		ofs << agnode->toDotNode(id) << "\n";
+		id++;
+	}
+
+	for (auto agedge : agedge_set) {
+		AGNode *src = agedge->getSrc();
+		AGNode *dst = agedge->getDst();
+
+		ofs << agedge->toDotEdge(
+			agnode_id[src],
+			agnode_id[dst]
+		) << "\n";
+	}
+
+	ofs << "}\n";
+
+	ofs.close();
+}
+
+void AliasGraph::dumpSvg(std::string svg_name) {
+	string dot = "typegraph.dot";
+
+	dumpDot(dot);
+
+	std::string cmd = "dot -Tsvg " + dot + " -o " + svg_name;
+
+	system(cmd.c_str());
+}
+

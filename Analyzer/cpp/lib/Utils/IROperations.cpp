@@ -165,3 +165,24 @@ string dbg2str(Metadata *MD, Module *mod, Function *func) {
 		MD->print(OS, MST, mod);
 	});
 }
+
+bool isDbgCall(Instruction *inst) {
+	CallInst *call_inst = dyn_cast<CallInst>(inst);
+	if (call_inst == NULL) {
+		return false;
+	}
+	Function *func = call_inst->getCalledFunction();
+	if (func == NULL) {
+		return false;
+	}
+	string func_name = func->getName().str();
+	if (func_name.find("llvm.dbg") == string::npos) {
+		return false;
+	} else {
+		return true;
+	}
+}
+
+bool isConstant(Value *val) {
+	return isa<Constant>(val);
+}

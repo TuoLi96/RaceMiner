@@ -1,7 +1,9 @@
 #include "AliasAnalysis/Steensgaard.h"
 #include "Constants.h"
+#include "Utils/IROperations.h"
 
 #include <stack>
+#include <iostream>
 
 #include "llvm/IR/Constant.h"
 
@@ -52,11 +54,22 @@ void Steensgaard::unify(AGNode *agnode1, AGNode *agnode2) {
 
 
 void Steensgaard::createNodeForInst(Instruction *inst) {
+	if (isDbgCall(inst)) {
+		return;
+	}
 	for (size_t op_idx = 0; op_idx < inst->getNumOperands(); op_idx++) {
 		Value *op = inst->getOperand(op_idx);
+		if (isa<BasicBlock>(op) || isa<Constant>(op)) {
+			// NOTE: Skip contant at present.
+			continue;
+		}
 		createAGNode(op);
 	}
-	createAGNode(inst);
+	if (!isa<StoreInst>(inst) && !isa<ReturnInst>(inst) && 
+				!isa<BranchInst>(inst) && !isa<SwitchInst>(inst) &&
+				!isa<UnreachableInst>(inst)) {
+		createAGNode(inst);
+	}
 }
 
 void Steensgaard::createNodeForBlock(BasicBlock &blk) {
@@ -91,7 +104,7 @@ void Steensgaard::handleLoad(LoadInst *load_inst) {
 	AGNode *val_node = getAGNode(load_inst);
 	AGNode *succ_node = pointer_node->getOutNodeByOffset(REF_OFFSET);
 	if (succ_node != NULL) {
-		unify(val_node, succ_node);
+		uf.unite(val_node, succ_node);
 	} else {
 		createAGEdge(pointer_node, val_node, REF_OFFSET);
 	}
@@ -107,7 +120,7 @@ void Steensgaard::handleStore(StoreInst *store_inst) {
 	AGNode *val_node = getAGNode(val);
 	AGNode *succ_node = pointer_node->getOutNodeByOffset(REF_OFFSET);
 	if (succ_node != NULL) {
-		unify(val_node, succ_node);
+		uf.unite(val_node, succ_node);
 	} else {
 		createAGEdge(pointer_node, val_node, REF_OFFSET);
 	}
@@ -127,7 +140,7 @@ void Steensgaard::handleGep(GetElementPtrInst *gep_inst) {
 	AGNode *val_node = getAGNode(val);
 	AGNode *offset_node = base_node->getOutNodeByOffset(offset);
 	if (offset_node != NULL) {
-		unify(val_node, offset_node);
+		uf.unite(val_node, offset_node);
 	} else {
 		createAGEdge(base_node, val_node, offset);
 	}
@@ -141,7 +154,7 @@ void Steensgaard::handleCast(BitCastInst *cast_inst) {
 	Value *tar_val = cast_inst;
 	AGNode *ori_node = getAGNode(ori_val);
 	AGNode *tar_node = getAGNode(tar_val);
-	unify(ori_node, tar_node);
+	uf.unite(ori_node, tar_node);
 }
 
 void Steensgaard::handleInst(Instruction *inst) {
