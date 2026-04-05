@@ -78,11 +78,12 @@ private:
 	std::unordered_map<AGNode *, int> getBackDist(AGNode *dst);
 
 protected:
-	void createAGNode(llvm::Value *val);
+	void updateAGNode(llvm::Value *val, AGNode *agnode);
 	void createAGEdge(AGNode *src_node, AGNode *dst_node, int offset);
 
 public:
 	AGNode *getAGNode(llvm::Value *val);
+	AGNode *findAGNode(llvm::Value *val);
 	void compact(UnionFind<AGNode *> &uf);
 	virtual void build() = 0;
 

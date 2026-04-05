@@ -23,12 +23,6 @@ public:
 private:
 	void unify(AGNode *agnode1, AGNode *agnode2);
 
-	void createNodeForInst(llvm::Instruction *inst);
-	void createNodeForBlock(llvm::BasicBlock &blk);
-	void createNodeForFunc(llvm::Function &func);
-	void createNodeForMod(llvm::Module &mod);
-	void createNodeForPack();
-
 	void handleLoad(llvm::LoadInst *load_inst);
 	void handleStore(llvm::StoreInst *store_inst);
 	void handleGep(llvm::GetElementPtrInst *gep_inst);

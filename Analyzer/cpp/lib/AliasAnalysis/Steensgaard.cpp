@@ -52,60 +52,19 @@ void Steensgaard::unify(AGNode *agnode1, AGNode *agnode2) {
 	}
 }
 
-
-void Steensgaard::createNodeForInst(Instruction *inst) {
-	if (isDbgCall(inst)) {
-		return;
-	}
-	for (size_t op_idx = 0; op_idx < inst->getNumOperands(); op_idx++) {
-		Value *op = inst->getOperand(op_idx);
-		if (isa<BasicBlock>(op) || isa<Constant>(op)) {
-			// NOTE: Skip contant at present.
-			continue;
-		}
-		createAGNode(op);
-	}
-	if (!isa<StoreInst>(inst) && !isa<ReturnInst>(inst) && 
-				!isa<BranchInst>(inst) && !isa<SwitchInst>(inst) &&
-				!isa<UnreachableInst>(inst)) {
-		createAGNode(inst);
-	}
-}
-
-void Steensgaard::createNodeForBlock(BasicBlock &blk) {
-	for (auto &inst : blk) {
-		createNodeForInst(&inst);
-	}
-}
-
-void Steensgaard::createNodeForFunc(Function &func) {
-	for (auto &blk : func) {
-		createNodeForBlock(blk);
-	}
-}
-
-void Steensgaard::createNodeForMod(Module &mod) {
-	for (auto &func : mod) {
-		createNodeForFunc(func);
-	}
-}
-
-void Steensgaard::createNodeForPack() {
-	for (int mod_mgr_idx = 0; mod_mgr_idx < mod_pack->getNumMgrs(); mod_mgr_idx++) {
-		analyzing_mod_mgr = mod_pack->getMgr(mod_mgr_idx);
-		Module *mod = analyzing_mod_mgr->getMod();
-		createNodeForMod(*mod);
-	}
-}
-
 void Steensgaard::handleLoad(LoadInst *load_inst) {
 	Value *pointer = load_inst->getOperand(0);
 	AGNode *pointer_node = getAGNode(pointer);
-	AGNode *val_node = getAGNode(load_inst);
 	AGNode *succ_node = pointer_node->getOutNodeByOffset(REF_OFFSET);
 	if (succ_node != NULL) {
-		uf.unite(val_node, succ_node);
+		AGNode *val_node = findAGNode(load_inst);
+		if (!val_node) {
+			updateAGNode(load_inst, succ_node);
+		} else {
+			uf.unite(val_node, succ_node);
+		}
 	} else {
+		AGNode *val_node = getAGNode(load_inst);
 		createAGEdge(pointer_node, val_node, REF_OFFSET);
 	}
 }
@@ -117,8 +76,8 @@ void Steensgaard::handleStore(StoreInst *store_inst) {
 		return;
 	}
 	AGNode *pointer_node = getAGNode(pointer);
-	AGNode *val_node = getAGNode(val);
 	AGNode *succ_node = pointer_node->getOutNodeByOffset(REF_OFFSET);
+	AGNode *val_node = getAGNode(val);
 	if (succ_node != NULL) {
 		uf.unite(val_node, succ_node);
 	} else {
@@ -137,11 +96,16 @@ void Steensgaard::handleGep(GetElementPtrInst *gep_inst) {
 		}
 	}
 	AGNode *base_node = getAGNode(base);
-	AGNode *val_node = getAGNode(val);
 	AGNode *offset_node = base_node->getOutNodeByOffset(offset);
 	if (offset_node != NULL) {
-		uf.unite(val_node, offset_node);
+		AGNode *val_node = findAGNode(val);
+		if (!val_node) {
+			updateAGNode(val, offset_node);
+		} else {
+			uf.unite(val_node, offset_node);
+		}
 	} else {
+		AGNode *val_node = getAGNode(val);
 		createAGEdge(base_node, val_node, offset);
 	}
 }
@@ -153,8 +117,12 @@ void Steensgaard::handleCast(BitCastInst *cast_inst) {
 	}
 	Value *tar_val = cast_inst;
 	AGNode *ori_node = getAGNode(ori_val);
-	AGNode *tar_node = getAGNode(tar_val);
-	uf.unite(ori_node, tar_node);
+	AGNode *tar_node = findAGNode(tar_val);
+	if (!tar_node) {
+		updateAGNode(cast_inst, ori_node);
+	} else {
+		uf.unite(ori_node, tar_node);
+	}
 }
 
 void Steensgaard::handleInst(Instruction *inst) {
@@ -198,7 +166,6 @@ void Steensgaard::handlePack() {
 }
 
 void Steensgaard::build() {
-	createNodeForPack();
 	handlePack();
 	compact(uf);
 }

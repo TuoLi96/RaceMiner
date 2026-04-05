@@ -211,14 +211,9 @@ unordered_map<AGNode *, int> AliasGraph::getBackDist(AGNode *dst) {
 	return back_dist;
 }
 
-void AliasGraph::createAGNode(Value *val) {
-	if (val2node.find(val) != val2node.end()) {
-		return;
-	}
-	AGNode *new_agnode = new AGNode();
-	new_agnode->insertVal(val);
-	agnode_set.insert(new_agnode);
-	val2node[val] = new_agnode;
+void AliasGraph::updateAGNode(Value *val, AGNode *agnode) {
+	agnode->insertVal(val);
+	val2node[val] = agnode;
 }
 
 void AliasGraph::createAGEdge(AGNode *src_agnode, AGNode *dst_agnode, int offset) {
@@ -229,7 +224,24 @@ void AliasGraph::createAGEdge(AGNode *src_agnode, AGNode *dst_agnode, int offset
 }
 
 AGNode *AliasGraph::getAGNode(Value *val) {
-	return val2node[val];
+	auto node_find = val2node.find(val);
+	if (node_find != val2node.end()) {
+		return node_find->second;
+	}
+	AGNode *new_agnode = new AGNode();
+	new_agnode->insertVal(val);
+	agnode_set.insert(new_agnode);
+	val2node[val] = new_agnode;
+	return new_agnode;
+}
+
+AGNode *AliasGraph::findAGNode(Value *val) {
+	auto node_find = val2node.find(val);
+	if (node_find != val2node.end()) {
+		return node_find->second;
+	} else {
+		return NULL;
+	}
 }
 
 void AliasGraph::compact(UnionFind<AGNode *> &uf) {
@@ -500,6 +512,9 @@ vector<int> AliasGraph::getOffsetAGPath(AGNode *src, AGNode *dst) {
 		}
 		int offset = path_step.edge->getOffset();
 		offset_path.push_back(offset);
+	}
+	if (offset_path.size() >= 1 && offset_path[offset_path.size() - 1] == REF_OFFSET) {
+		offset_path.pop_back();
 	}
 	return offset_path;
 }
