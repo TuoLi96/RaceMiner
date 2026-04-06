@@ -304,6 +304,7 @@ void TypeGraph::createTypeEdge(TypeNode *src, TypeNode *dst, int offset, string 
 
 void TypeGraph::handleDIElements(TypeNode *base_tynode, DINodeArray &elem_array) {
 	int offset = 0;
+	bool has_bit_member = false;
 	for (auto elem : elem_array) {
 		DIDerivedType *derived_ditype = dyn_cast<DIDerivedType>(elem);
 		auto elem_tag = derived_ditype->getTag();
@@ -317,6 +318,20 @@ void TypeGraph::handleDIElements(TypeNode *base_tynode, DINodeArray &elem_array)
 						getTagStr(elem_tag));
 			break;
 		}
+
+		auto elem_flag = derived_ditype->getFlags();
+		if (elem_flag & llvm::DINode::FlagBitField) {
+			if (!has_bit_member) {
+				has_bit_member = true;
+				string field = derived_ditype->getName().str();
+				DIType *elem_ditype = derived_ditype->getBaseType();
+				TypeNode *elem_tynode = getTypeNode(elem_ditype);
+				createTypeEdge(base_tynode, elem_tynode, offset, field);
+				offset++;
+			}
+			continue;
+		}
+		has_bit_member = false;
 		string field = derived_ditype->getName().str();
 		DIType *elem_ditype = derived_ditype->getBaseType();
 		TypeNode *elem_tynode = getTypeNode(elem_ditype);
@@ -487,7 +502,7 @@ string TypeGraph::getFieldPath(Value *val, vector<int> &offset_vec) {
 		int offset = offset_vec[offset_idx];
 		TypeEdge *type_edge = type_node->getOutEdgeByOffset(offset);
 		if (type_edge == NULL) {
-			return "";
+			return field_path;
 		}
 		type_node = type_edge->getDst();
 		string field_name = type_edge->getField();
