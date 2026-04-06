@@ -14,3 +14,8 @@ TestSuite/**
 !TestSuite/**/Makefile
 !TestSuite/**/*.c
 !TestSuite/**/*.h
+
+**/venv/
+**/__pycache__/
+**/*.egg-info/
+**/*.egg-info
