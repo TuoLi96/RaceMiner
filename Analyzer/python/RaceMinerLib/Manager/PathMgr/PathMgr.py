@@ -17,6 +17,8 @@ class PathMgr:
 
         self.miner_root = self._get_env("MINER_ROOT")
         self.work_root = self._get_env("MINER_WORK_ROOT")
+        # FIXME: Use directory under work_root
+        self.checked_root = self._get_env("HUNTER_CHECKED_SRC_PATH")
 
         self.path_json = {}
 
@@ -40,34 +42,57 @@ class PathMgr:
         db_compile = db_source_info / "compile.db"
         self._create_dir_if_not_exist(db_compile)
         self.path_json["db_compile"] = str(db_compile)
+        db_src_info = db_source_info / "src_info.db"
+        self._create_dir_if_not_exist(db_src_info)
+        self.path_json["db_src_info"] = str(db_src_info)
 
         db_bug = db_root / "BugInfo"
         db_bug_race = db_bug / "Race.db"
         self._create_dir_if_not_exist(db_bug_race)
         self.path_json["db_bug_race"] = str(db_bug_race)
 
-        db_schema_root = self.miner_root / "DBSchema"
-
-        tbl_race_root = db_schema_root / "BugDetection" / "Race"
-
         def add_sql(name, path):
             self._create_dir_if_not_exist(path)
             self.path_json[name] = str(path)
 
+        db_schema_root = self.miner_root / "DBSchema"
+
+        tbl_race_root = db_schema_root / "BugDetection" / "Race"
         add_sql("tbl_create_lock_collection", tbl_race_root / "lock_collection.create")
         add_sql("tbl_insert_lock_collection", tbl_race_root / "lock_collection.insert")
         add_sql("tbl_select_lock_collection", tbl_race_root / "lock_collection.select")
 
         tbl_compile_root = db_schema_root / "SourceInfo" / "Compile"
-
         add_sql("tbl_create_link", tbl_compile_root / "link.create")
         add_sql("tbl_insert_link", tbl_compile_root / "link.insert")
         add_sql("tbl_select_link", tbl_compile_root / "link.select")
+
+        add_sql("tbl_create_include_info", tbl_compile_root / "include_info.create")
+        add_sql("tbl_insert_include_info", tbl_compile_root / "include_info.insert")
+        add_sql("tbl_select_include_info", tbl_compile_root / "include_info.select")
+        add_sql("tbl_select_file_include_info", tbl_compile_root / "include_info.select_file")
+
+        tbl_symbol_root = db_schema_root / "SourceInfo" / "Symbol"
+        add_sql("tbl_create_func_def", tbl_symbol_root / "func_def.create")
+        add_sql("tbl_insert_func_def", tbl_symbol_root / "func_def.insert")
+        add_sql("tbl_select_func_def", tbl_symbol_root / "func_def.select")
+        add_sql("tbl_select_func_func_def", tbl_symbol_root / "func_def.select_func")
+
+        add_sql("tbl_create_struct_def", tbl_symbol_root / "struct_def.create")
+        add_sql("tbl_insert_struct_def", tbl_symbol_root / "struct_def.insert")
+        add_sql("tbl_select_struct_def", tbl_symbol_root / "struct_def.select")
+        add_sql("tbl_select_struct_struct_def", tbl_symbol_root / "struct_def.select_struct")
 
     def _create_api_if_not_exist(self):
         api_lock_path = self.work_root / "config" / "API" / "LockAPI"
         self._create_dir_if_not_exist(api_lock_path)
         self.path_json["api_lock_path"] = str(api_lock_path)
+
+    def _create_result_if_not_exist(self):
+        result_root = self.work_root / "Results"
+        lock_rule_task_dir = result_root / "LockRuleTask"
+        lock_rule_task_dir.mkdir(parents=True, exist_ok=True)
+        self.path_json["lock_rule_task_dir"] = str(lock_rule_task_dir)
 
     def _create_if_not_exist(self):
         path_file = self.work_root / "config" / "Path" / "Path.json"
@@ -79,6 +104,7 @@ class PathMgr:
 
         self._create_api_if_not_exist()
         self._create_db_if_not_exist()
+        self._create_result_if_not_exist()
 
         with open(path_file, "w", encoding="utf-8") as f:
             json.dump(self.path_json, f, indent=4)
@@ -94,11 +120,17 @@ class PathMgr:
         except Exception as e:
             self.logger.error(f"Failed to load Path.json: {e}")
 
+    def get_checked_src_path(self):
+        return str(self.checked_root)
+
     def get_api_lock_path(self):
         return self.path_json.get("api_lock_path")
 
     def get_race_db_path(self):
         return self.path_json.get("db_bug_race")
+
+    def get_lock_rule_task_path(self):
+        return self.path_json.get("lock_rule_task_dir")
 
     def get_tbl_create_lock_collection(self):
         return self.path_json.get("tbl_create_lock_collection")
@@ -120,3 +152,42 @@ class PathMgr:
 
     def get_tbl_select_link(self):
         return self.path_json.get("tbl_select_link")
+
+    def get_srcinfo_db_path(self):
+        return self.path_json.get("db_src_info")
+
+    def get_tbl_create_func_def(self):
+        return self.path_json.get("tbl_create_func_def")
+        
+    def get_tbl_insert_func_def(self):
+        return self.path_json.get("tbl_insert_func_def")
+
+    def get_tbl_select_func_def(self):
+        return self.path_json.get("tbl_select_func_def")
+
+    def get_tbl_select_func_func_def(self):
+        return self.path_json.get("tbl_select_func_func_def")
+
+    def get_tbl_create_struct_def(self):
+        return self.path_json.get("tbl_create_struct_def")
+        
+    def get_tbl_insert_struct_def(self):
+        return self.path_json.get("tbl_insert_struct_def")
+
+    def get_tbl_select_struct_def(self):
+        return self.path_json.get("tbl_select_struct_def")
+
+    def get_tbl_select_struct_struct_def(self):
+        return self.path_json.get("tbl_select_struct_struct_def")
+
+    def get_tbl_create_include_info(self):
+        return self.path_json.get("tbl_create_include_info")
+
+    def get_tbl_insert_include_info(self):
+        return self.path_json.get("tbl_insert_include_info")
+
+    def get_tbl_select_include_info(self):
+        return self.path_json.get("tbl_select_include_info")
+
+    def get_tbl_select_file_include_info(self):
+        return self.path_json.get("tbl_select_file_include_info")

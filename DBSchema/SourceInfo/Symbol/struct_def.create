@@ -1,0 +1,18 @@
+CREATE TABLE IF NOT EXISTS stype_def (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	stype_name TEXT,
+	typedef_type TEXT,
+	src_file TEXT,
+	start_line INTEGER,
+	end_line INTEGER,
+	start_byte INTEGER,
+	end_byte INTEGER, 
+	UNIQUE(
+		stype_name,
+		typedef_type,
+		src_file,
+		start_line,
+		end_line,
+		start_byte,
+		end_byte)
+);

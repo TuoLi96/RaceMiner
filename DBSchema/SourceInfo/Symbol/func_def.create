@@ -1,0 +1,19 @@
+CREATE TABLE IF NOT EXISTS func_def (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	func_name TEXT, is_static INTEGER,
+	is_inline INTEGER,
+	src_file TEXT,
+	start_line INTEGER,
+	end_line INTEGER,
+	start_byte INTEGER,
+	end_byte INTEGER,
+	UNIQUE(
+		func_name,
+		is_static,
+		is_inline,
+		src_file,
+		start_line,
+		end_line,
+		start_byte,
+		end_byte)
+);

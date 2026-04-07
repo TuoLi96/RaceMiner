@@ -1,0 +1,18 @@
+INSERT INTO func_def (
+	func_name,
+	is_inline,
+	src_file,
+	start_line,
+	end_line,
+	start_byte,
+	end_byte
+) VALUES (?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (
+	func_name,
+	is_inline,
+	src_file,
+	start_line,
+	end_line,
+	start_byte,
+	end_byte
+) DO NOTHING;

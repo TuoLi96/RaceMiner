@@ -1,0 +1,18 @@
+INSERT INTO stype_def (
+	stype_name,
+	typedef_type,
+	src_file,
+	start_line,
+	end_line,
+	start_byte,
+	end_byte
+) VALUES (?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (
+	stype_name,
+	typedef_type,
+	src_file,
+	start_line,
+	end_line,
+	start_byte,
+	end_byte
+) DO NOTHING;
