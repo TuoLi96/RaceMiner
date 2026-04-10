@@ -1,5 +1,6 @@
 #include "AliasAnalysis/AliasGraph.h"
 #include "Constants.h"
+#include "Utils/IROperations.h"
 
 #include <queue>
 #include <unordered_map>
@@ -16,6 +17,9 @@ using namespace llvm;
  */
 
 AGNode::AGNode() {
+	this->anchor_val = NULL;
+	this->anchor_name = "";
+	this->type_name = ""; 
 	this->alias_set.clear();
 	this->in_edges.clear();
 	this->out_edges.clear();
@@ -25,6 +29,31 @@ AGNode::~AGNode() {
 	// Need to do nothing at present.
 }
 
+void AGNode::setAnchor(llvm::Value *anchor_val, std::string anchor_name) {
+	this->anchor_val = anchor_val;
+	this->anchor_name = anchor_name;
+}
+
+bool AGNode::isAnchor() {
+	return anchor_val != NULL;
+}
+
+llvm::Value *AGNode::getAnchorVal() {
+	return anchor_val;
+}
+
+std::string AGNode::getAnchorName() {
+	return anchor_name;
+}
+
+void AGNode::setTypeName(string type_name) {
+	this->type_name = type_name;
+}
+
+string AGNode::getTypeName() {
+	return type_name;
+}
+
 void AGNode::insertVal(Value *val) {
 	alias_set.insert(val);
 }
@@ -32,25 +61,6 @@ void AGNode::insertVal(Value *val) {
 const set<Value *> &AGNode::getAliasSet() const {
 	return alias_set;
 }
-
-bool AGNode::isAnchor() {
-	for (auto val : alias_set) {
-		if (isa<AllocaInst>(val) || isa<GlobalVariable>(val)) {
-			return true;
-		}
-	}
-	return false;
-}
-
-Value *AGNode::getOneAnchorVal() {
-	for (auto val : alias_set) {
-		if (isa<AllocaInst>(val) || isa<GlobalVariable>(val)) {
-			return val;
-		}
-	}
-	return NULL;
-}
-
 
 void AGNode::pushInEdge(AGEdge *edge) {
 	in_edges.push_back(edge);
@@ -68,16 +78,16 @@ AGNode *AGNode::getInNode(int in_idx) {
 	return in_edges[in_idx]->getSrc();
 }
 
-void AGNode::pushOutEdge(int offset, AGEdge *edge) {
-	out_edges[offset] = edge;
+void AGNode::pushOutEdge(string field, AGEdge *edge) {
+	out_edges[field] = edge;
 }
 
-const std::map<int, AGEdge*>& AGNode::getOutEdges() const {
+const std::map<string, AGEdge*>& AGNode::getOutEdges() const {
 	return out_edges;
 }
 
-AGEdge *AGNode::getOutEdgeByOffset(int offset) {
-	auto edge_finder = out_edges.find(offset);
+AGEdge *AGNode::getOutEdge(string field) {
+	auto edge_finder = out_edges.find(field);
 	if (edge_finder != out_edges.end()) {
 		return edge_finder->second;
 	} else {
@@ -85,8 +95,8 @@ AGEdge *AGNode::getOutEdgeByOffset(int offset) {
 	}
 }
 
-AGNode *AGNode::getOutNodeByOffset(int offset) {
-	AGEdge *out_edge = getOutEdgeByOffset(offset);
+AGNode *AGNode::getOutNode(string field) {
+	AGEdge *out_edge = getOutEdge(field);
 	if (out_edge == NULL) {
 		return NULL;
 	} else {
@@ -123,10 +133,10 @@ string AGNode::toDotNode(size_t id) {
  * Implementation of AGEdge
  */
 
-AGEdge::AGEdge(AGNode *src, AGNode *dst, int offset) {
+AGEdge::AGEdge(AGNode *src, AGNode *dst, string field) {
 	this->src = src;
 	this->dst = dst;
-	this->offset = offset;
+	this->field = field;
 }
 
 AGEdge::~AGEdge() {
@@ -141,29 +151,19 @@ AGNode *AGEdge::getDst() {
 	return dst;
 }
 
-int AGEdge::getOffset() {
-	return offset;
+string AGEdge::getField() {
+	return field;
 }
 
 string AGEdge::toDotEdge(size_t src_id, size_t dst_id) {
 	string edge_str;
-	string offset_str;
-	if (offset == REF_OFFSET) {
-		offset_str = "ref";
-	} else if (offset == GEP_OFFSET) {
-		offset_str = "gep";
-	} else {
-		offset_str = to_string(offset);
-	}
 
 	edge_str += "node" + to_string(src_id);
 	edge_str += " -> ";
 	edge_str += "node" + to_string(dst_id);
 
 	edge_str += " [label=\"";
-	edge_str += offset_str;
-	edge_str += " : ";
-	edge_str += to_string(offset);
+	edge_str += field;
 	edge_str += "\"]";
 
 	edge_str += ";";
@@ -216,9 +216,9 @@ void AliasGraph::updateAGNode(Value *val, AGNode *agnode) {
 	val2node[val] = agnode;
 }
 
-void AliasGraph::createAGEdge(AGNode *src_agnode, AGNode *dst_agnode, int offset) {
-	AGEdge *new_edge = new AGEdge(src_agnode, dst_agnode, offset);
-	src_agnode->pushOutEdge(offset, new_edge);
+void AliasGraph::createAGEdge(AGNode *src_agnode, AGNode *dst_agnode, string field) {
+	AGEdge *new_edge = new AGEdge(src_agnode, dst_agnode, field);
+	src_agnode->pushOutEdge(field, new_edge);
 	dst_agnode->pushInEdge(new_edge);
 	agedge_set.insert(new_edge);
 }
@@ -232,6 +232,14 @@ AGNode *AliasGraph::getAGNode(Value *val) {
 	new_agnode->insertVal(val);
 	agnode_set.insert(new_agnode);
 	val2node[val] = new_agnode;
+
+	if (isa<AllocaInst>(val) || isa<GlobalVariable>(val)) {
+		string type_name = getTypeName(val);
+		string var_name = getVarName(val);
+		new_agnode->setAnchor(val, var_name);
+		new_agnode->setTypeName(type_name);
+	}
+
 	return new_agnode;
 }
 
@@ -271,12 +279,12 @@ void AliasGraph::compact(UnionFind<AGNode *> &uf) {
 
 		const auto &members = uf.getMembers(rep);
 
-		unordered_map<int, vector<AGNode *> > offset2dsts;
+		unordered_map<string, vector<AGNode *> > field2dsts;
 
 		for (AGNode *node : members) {
 			const auto &out_edges = node->getOutEdges();
 
-			for (const auto &[offset, edge] : out_edges) {
+			for (const auto &[field, edge] : out_edges) {
 				if (!edge) {
 					continue;
 				}
@@ -286,11 +294,11 @@ void AliasGraph::compact(UnionFind<AGNode *> &uf) {
 					continue;
 				}
 
-				offset2dsts[offset].push_back(dst);
+				field2dsts[field].push_back(dst);
 			}
 		}
 
-		for (auto &[offset, dsts] : offset2dsts) {
+		for (auto &[field, dsts] : field2dsts) {
 			if (dsts.size() <= 1) {
 				continue;
 			}
@@ -332,6 +340,13 @@ void AliasGraph::compact(UnionFind<AGNode *> &uf) {
 		for (llvm::Value *val : old_node->getAliasSet()) {
 			new_node->insertVal(val);
 		}
+
+		if (!new_node->isAnchor() && old_node->isAnchor()) {
+			new_node->setAnchor(old_node->getAnchorVal(), old_node->getAnchorName());
+		}
+		if (new_node->getTypeName() == "" && old_node->getTypeName() != "") {
+			new_node->setTypeName(old_node->getTypeName());
+		}
 	}
 
 	// Create new AGNode and AGEdge.
@@ -350,12 +365,12 @@ void AliasGraph::compact(UnionFind<AGNode *> &uf) {
 	struct EdgeKey {
 		AGNode *src;
 		AGNode *dst;
-		int offset;
+		string field;
 
 		bool operator==(const EdgeKey &other) const {
 			return src == other.src &&
 				   dst == other.dst &&
-				   offset == other.offset;
+				   field == other.field;
 		}
 	};
 
@@ -363,7 +378,7 @@ void AliasGraph::compact(UnionFind<AGNode *> &uf) {
 		size_t operator()(const EdgeKey &k) const {
 			size_t h1 = std::hash<AGNode *>()(k.src);
 			size_t h2 = std::hash<AGNode *>()(k.dst);
-			size_t h3 = std::hash<int>()(k.offset);
+			size_t h3 = std::hash<string>()(k.field);
 			return h1 ^ (h2 << 1) ^ (h3 << 2);
 		}
 	};
@@ -377,7 +392,7 @@ void AliasGraph::compact(UnionFind<AGNode *> &uf) {
 
 		AGNode *old_src = old_edge->getSrc();
 		AGNode *old_dst = old_edge->getDst();
-		int offset = old_edge->getOffset();
+		string field = old_edge->getField();
 
 		if (!old_src || !old_dst) {
 			continue;
@@ -386,16 +401,16 @@ void AliasGraph::compact(UnionFind<AGNode *> &uf) {
 		AGNode *new_src = rep2newnode[uf.find(old_src)];
 		AGNode *new_dst = rep2newnode[uf.find(old_dst)];
 
-		EdgeKey key{new_src, new_dst, offset};
+		EdgeKey key{new_src, new_dst, field};
 		if (edge_seen.count(key)) {
 			continue;
 		}
 		edge_seen.insert(key);
 
-		AGEdge *new_edge = new AGEdge(new_src, new_dst, offset);
+		AGEdge *new_edge = new AGEdge(new_src, new_dst, field);
 		new_agedge_set.insert(new_edge);
 
-		new_src->pushOutEdge(offset, new_edge);
+		new_src->pushOutEdge(field, new_edge);
 		new_dst->pushInEdge(new_edge);
 	}
 
@@ -460,12 +475,16 @@ AGNode *AliasGraph::findNearestAncestor(vector<Value *> &vals, bool should_ancho
 	return findNearestAncestor(nodes, should_anchor);
 }
 
-vector<AGPathStep> AliasGraph::getAGPath(AGNode *src, AGNode *dst) {
-	unordered_map<AGNode *, pair<AGNode *, AGEdge *> > parent;
+vector<AGEdge *> AliasGraph::getFieldPathEdges(AGNode *src, AGNode *dst) {
+	if (src == dst) {
+		return {};
+	}
+
+	unordered_map<AGNode *, AGEdge *> parent_edge;
 	queue<AGNode *> work_queue;
 
 	work_queue.push(src);
-	parent[src] = {NULL, NULL};
+	parent_edge[src] = nullptr;
 
 	while (!work_queue.empty()) {
 		AGNode *node = work_queue.front();
@@ -475,48 +494,49 @@ vector<AGPathStep> AliasGraph::getAGPath(AGNode *src, AGNode *dst) {
 			break;
 		}
 
-		for (auto & [offset, edge] : node->getOutEdges()) {
+		for (const auto &[field, edge] : node->getOutEdges()) {
 			AGNode *out_node = edge->getDst();
 
-			if (!parent.count(out_node)) {
-				parent[out_node] = {node, edge};
+			if (!parent_edge.count(out_node)) {
+				parent_edge[out_node] = edge;
 				work_queue.push(out_node);
 			}
 		}
 	}
 
-	if (!parent.count(dst)) {
+	if (!parent_edge.count(dst)) {
 		return {};
 	}
 
-	vector<AGPathStep> path;
-	AGNode *cur = dst;
+	vector<AGEdge *> edges;
+	for (AGNode *cur = dst; cur != src; ) {
+		AGEdge *edge = parent_edge[cur];
+		if (!edge) {
+			break;
+		}
 
-	while (cur) {
-		auto [p, e] = parent[cur];
-		path.push_back({cur, e});
-		cur = p;
+		edges.push_back(edge);
+		cur = edge->getSrc();
 	}
 
-	reverse(path.begin(), path.end());
-	return path;
+	reverse(edges.begin(), edges.end());
+	return edges;
 }
 
-vector<int> AliasGraph::getOffsetAGPath(AGNode *src, AGNode *dst) {
-	vector<AGPathStep> path = getAGPath(src, dst);
-	vector<int> offset_path;
-	for (auto path_step : path) {
-		if (!path_step.edge) {
-			// NOTE: This NULL edge is introduced in getAGPath for src parent.
+string AliasGraph::getFieldPath(AGNode *src, AGNode *dst) {
+	vector<AGEdge *> edges = getFieldPathEdges(src, dst);
+	string field_path;
+
+	for (size_t edge_idx = 0; edge_idx < edges.size(); edge_idx++) {
+		AGEdge *edge = edges[edge_idx];
+		string field = edge->getField();
+		if (field == REF_FIELD) {
 			continue;
 		}
-		int offset = path_step.edge->getOffset();
-		offset_path.push_back(offset);
+		field_path += ".";
+		field_path += field;
 	}
-	if (offset_path.size() >= 1 && offset_path[offset_path.size() - 1] == REF_OFFSET) {
-		offset_path.pop_back();
-	}
-	return offset_path;
+	return field_path;
 }
 
 void AliasGraph::dumpDot(string dot_file) {

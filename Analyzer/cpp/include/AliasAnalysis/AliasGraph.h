@@ -14,29 +14,39 @@ class AGEdge;
 
 class AGNode {
 private:
+	llvm::Value *anchor_val;
+	std::string anchor_name;
+	std::string type_name;
+
 	std::set<llvm::Value *> alias_set;
 	std::vector<AGEdge *> in_edges;
-	std::map<int, AGEdge *> out_edges;
+	std::map<std::string, AGEdge *> out_edges;
 
 public:
 	AGNode();
 	~AGNode();
 
 public:
+	void setAnchor(llvm::Value *anchor_val, std::string anchor_name);
+	bool isAnchor();
+	llvm::Value *getAnchorVal();
+	std::string getAnchorName();
+
+	void setTypeName(std::string type_name);
+	std::string getTypeName();
+
 	void insertVal(llvm::Value *val);
 	const std::set<llvm::Value *> &getAliasSet() const;
-	bool isAnchor();
-	llvm::Value *getOneAnchorVal();
 
 	void pushInEdge(AGEdge *edge);
 	int getNumIns();
 	AGEdge *getInEdge(int in_idx);
 	AGNode *getInNode(int in_idx);
 
-	void pushOutEdge(int offset, AGEdge *edge);
-	const std::map<int, AGEdge*> &getOutEdges() const;
-	AGEdge *getOutEdgeByOffset(int offset);
-	AGNode *getOutNodeByOffset(int offset);
+	void pushOutEdge(std::string field, AGEdge *edge);
+	const std::map<std::string, AGEdge*> &getOutEdges() const;
+	AGEdge *getOutEdge(std::string field);
+	AGNode *getOutNode(std::string field);
 
 	std::string toDotNode(size_t id);
 };
@@ -45,16 +55,16 @@ class AGEdge {
 private:
 	AGNode *src;
 	AGNode *dst;
-	int offset;
+	std::string field;
 
 public:
-	AGEdge(AGNode *src, AGNode *dst, int offset);
+	AGEdge(AGNode *src, AGNode *dst, std::string field);
 	~AGEdge();
 
 public:
 	AGNode *getSrc();
 	AGNode *getDst();
-	int getOffset();
+	std::string getField();
 
 	std::string toDotEdge(size_t src_id, size_t dst_id);
 };
@@ -79,7 +89,7 @@ private:
 
 protected:
 	void updateAGNode(llvm::Value *val, AGNode *agnode);
-	void createAGEdge(AGNode *src_node, AGNode *dst_node, int offset);
+	void createAGEdge(AGNode *src_node, AGNode *dst_node, std::string field);
 
 public:
 	AGNode *getAGNode(llvm::Value *val);
@@ -90,8 +100,8 @@ public:
 	bool isAlias(llvm::Value *val1, llvm::Value *val2);
 	AGNode *findNearestAncestor(std::vector<AGNode *> &nodes, bool should_anchor=true);
 	AGNode *findNearestAncestor(std::vector<llvm::Value *> &vals, bool should_anchor=true);
-	std::vector<AGPathStep> getAGPath(AGNode *src, AGNode *dst);
-	std::vector<int> getOffsetAGPath(AGNode *src, AGNode *dst);
+	std::vector<AGEdge *> getFieldPathEdges(AGNode *src, AGNode *dst);
+	std::string getFieldPath(AGNode *src, AGNode *dst);
 
 	void dumpDot(std::string dot_name);
 	void dumpSvg(std::string svg_name);

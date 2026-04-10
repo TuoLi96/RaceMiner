@@ -7,6 +7,7 @@
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/IR/ModuleSlotTracker.h"
 #include "llvm/IR/DebugInfoMetadata.h"
+#include "llvm/IR/DebugInfo.h"
 
 class ModMgr {
 private:
@@ -16,12 +17,20 @@ private:
 	llvm::Module *mod;
 	llvm::ModuleSlotTracker *mst;
 
+	llvm::DenseMap<llvm::Value *, llvm::DIType *> val2ditype;
+	llvm::DenseMap<llvm::GetElementPtrInst *, std::string> gep2field;
+
 public:
 	ModMgr(std::string ir_path);
 	~ModMgr();
 
+private:
+	void collectDIType();
+
 public:
 	llvm::Module *getMod();
+	std::string getFieldOfGep(llvm::GetElementPtrInst *gep_inst);
+	std::pair<llvm::Value *, std::string> getAnchorFieldPath(llvm::Value *val);
 	std::string getRawMetadata(llvm::Metadata *metadata);
 	std::string getRawVal(llvm::Value *val);
 };

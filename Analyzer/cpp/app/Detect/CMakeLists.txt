@@ -1,25 +1,28 @@
-add_executable(detect_bugs
-    detect_bugs.cpp
-)
+file(GLOB TOOL_SOURCES *.cpp)
 
-target_include_directories(detect_bugs
-    PRIVATE
-    ${PROJECT_SOURCE_DIR}/include
-)
+foreach(src ${TOOL_SOURCES})
+    get_filename_component(name ${src} NAME_WE)
 
-target_link_libraries(detect_bugs
-    PRIVATE
-    AliasAnalysis
-    ModMgr
-	CFG
-	ConcAPI
-	RaceDetector
-	PathMgr
-	DBMgr
-	Utils
-	miner_flags
-)
+    add_executable(${name} ${src})
 
-install(TARGETS detect_bugs
-	RUNTIME DESTINATION bin
-)
+    target_include_directories(${name}
+        PRIVATE ${PROJECT_SOURCE_DIR}/include
+    )
+
+    target_link_libraries(${name}
+        PRIVATE
+        AliasAnalysis
+        ModMgr
+        CFG
+        ConcAPI
+        RaceDetector
+        PathMgr
+        DBMgr
+        Utils
+        miner_flags
+    )
+
+    install(TARGETS ${name}
+        RUNTIME DESTINATION bin
+    )
+endforeach()

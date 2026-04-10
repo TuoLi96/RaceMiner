@@ -41,9 +41,9 @@ void Steensgaard::unify(AGNode *agnode1, AGNode *agnode2) {
 		}
 		uf.unite(agnode1, agnode2);
 		for (const auto &kv : agnode1->getOutEdges()) {
-			int offset = kv.first;
+			string field = kv.first;
 			AGNode *dst_node1 = kv.second->getDst();
-			AGNode *dst_node2 = agnode2->getOutNodeByOffset(offset);
+			AGNode *dst_node2 = agnode2->getOutNode(field);
 			if (dst_node2) {
 				node_stk1.push(dst_node1);
 				node_stk2.push(dst_node2);
@@ -55,7 +55,7 @@ void Steensgaard::unify(AGNode *agnode1, AGNode *agnode2) {
 void Steensgaard::handleLoad(LoadInst *load_inst) {
 	Value *pointer = load_inst->getOperand(0);
 	AGNode *pointer_node = getAGNode(pointer);
-	AGNode *succ_node = pointer_node->getOutNodeByOffset(REF_OFFSET);
+	AGNode *succ_node = pointer_node->getOutNode(REF_FIELD);
 	if (succ_node != NULL) {
 		AGNode *val_node = findAGNode(load_inst);
 		if (!val_node) {
@@ -65,7 +65,7 @@ void Steensgaard::handleLoad(LoadInst *load_inst) {
 		}
 	} else {
 		AGNode *val_node = getAGNode(load_inst);
-		createAGEdge(pointer_node, val_node, REF_OFFSET);
+		createAGEdge(pointer_node, val_node, REF_FIELD);
 	}
 }
 
@@ -76,37 +76,36 @@ void Steensgaard::handleStore(StoreInst *store_inst) {
 		return;
 	}
 	AGNode *pointer_node = getAGNode(pointer);
-	AGNode *succ_node = pointer_node->getOutNodeByOffset(REF_OFFSET);
+	AGNode *succ_node = pointer_node->getOutNode(REF_FIELD);
 	AGNode *val_node = getAGNode(val);
 	if (succ_node != NULL) {
 		uf.unite(val_node, succ_node);
 	} else {
-		createAGEdge(pointer_node, val_node, REF_OFFSET);
+		createAGEdge(pointer_node, val_node, REF_FIELD);
 	}
 }
 
 void Steensgaard::handleGep(GetElementPtrInst *gep_inst) {
 	Value *base = gep_inst->getOperand(0);
 	Value *val = gep_inst;
-	Value *offset_val = gep_inst->getOperand(gep_inst->getNumOperands() - 1);
-	int offset = GEP_OFFSET;
-	if (ConstantInt *const_int = dyn_cast<ConstantInt>(offset_val)) {
-		if (const_int->getBitWidth() <= 64) {
-			offset = const_int->getSExtValue();
-		}
+
+	string field = analyzing_mod_mgr->getFieldOfGep(gep_inst);
+	if (field == "") {
+		return;
 	}
+
 	AGNode *base_node = getAGNode(base);
-	AGNode *offset_node = base_node->getOutNodeByOffset(offset);
-	if (offset_node != NULL) {
+	AGNode *field_node = base_node->getOutNode(field);
+	if (field_node != NULL) {
 		AGNode *val_node = findAGNode(val);
 		if (!val_node) {
-			updateAGNode(val, offset_node);
+			updateAGNode(val, field_node);
 		} else {
-			uf.unite(val_node, offset_node);
+			uf.unite(val_node, field_node);
 		}
 	} else {
 		AGNode *val_node = getAGNode(val);
-		createAGEdge(base_node, val_node, offset);
+		createAGEdge(base_node, val_node, field);
 	}
 }
 

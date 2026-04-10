@@ -12,6 +12,10 @@
 #include "llvm/IR/ModuleSlotTracker.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/IR/DebugInfoMetadata.h"
+#include "llvm/IR/DebugInfo.h"
+#include "llvm/BinaryFormat/Dwarf.h"
+
+#include <iostream>
 
 using namespace std;
 using namespace llvm;
@@ -57,6 +61,28 @@ pair<Value *, vector<int> > getOffsetValPath(Value *val) {
 		offset_path.push_back(path[path_idx].offset);
 	}
 	return {alloca_val, offset_path};
+}
+
+DIType *stripDITypedef(DIType *ditype) {
+	while (auto *di_derive = dyn_cast_or_null<DIDerivedType>(ditype)) {
+		if (di_derive->getTag() == dwarf::Tag::DW_TAG_typedef) {
+			ditype = di_derive->getBaseType();
+		} else {
+			break;
+		}
+	}
+	return ditype;
+}
+
+static string stripDITypeName(DIType *ditype) {
+	while (auto *di_derive = dyn_cast_or_null<DIDerivedType>(ditype)) {
+		if (!di_derive->getName().empty()) {
+			return di_derive->getName().str();
+		} else {
+			ditype = di_derive->getBaseType();
+		}
+	}
+	return "";
 }
 
 DIVariable *getDbgVar(Value *val) {
@@ -108,6 +134,22 @@ DIVariable *getDbgVar(Value *val) {
 		}
 	}
 	return first_dbg_var;
+}
+
+string getTypeName(Value *val) {
+	auto *dbg_var = getDbgVar(val);
+	if (dbg_var) {
+		return stripDITypeName(dbg_var->getType());
+	}
+	return "";
+}
+
+string getVarName(Value *val) {
+	auto *dbg_var = getDbgVar(val);
+	if (dbg_var) {
+		return dbg_var->getName().str();
+	}
+	return "";
 }
 
 string getSourcePath(Module *mod) {
@@ -186,3 +228,106 @@ bool isDbgCall(Instruction *inst) {
 bool isConstant(Value *val) {
 	return isa<Constant>(val);
 }
+
+/*static BitRange TypeGraph::parseBitRange(Value *val, uint64_t base_byte_offset) {
+	BitRange bit_range;
+
+	while (isa<CastInst>(val)) {
+		val = cast<CastInst>(val)->getOperand(0);
+	}
+
+	auto binary_inst = dyn_cast<BinaryOperator>(val);
+	if (!binary_inst) {
+		return bit_range;
+	}
+	int op_code = binary_inst->getOpcode();
+
+	if (op_code == Instruction::And) {
+		auto *and_inst = binary_inst;
+
+		auto *mask_const = dyn_cast<ConstantInt>(and_inst->getOperand(1));
+		if (!mask_const) {
+			return bit_range;
+		}
+		Value *lhs = and_inst->getOperand(0);
+
+		unsigned bw = mask_const->getBitWidth();
+		uint64_t full_mask = (bw == 64) ? ~0ULL : ((1ULL << bw) - 1);
+		uint64_t mask_val = mask_const->getZExtValue() & full_mask;
+
+		if (auto *shift_inst = dyn_cast<BinaryOperator>(lhs)) {
+
+			if (shift_inst->getOpcode() == Instruction::LShr ||
+				shift_inst->getOpcode() == Instruction::AShr) {
+
+				auto *shift_const = dyn_cast<ConstantInt>(shift_inst->getOperand(1));
+				if (!shift_const) {
+					return bit_range;
+				}
+
+				uint64_t shift_val = shift_const->getZExtValue();
+
+				bit_range.bit_offset = base_byte_offset * 8 + shift_val;
+				bit_range.width = __builtin_popcountll(mask_val);
+				bit_range.valid = true;
+
+				return bit_range;
+			}
+		}
+
+		bit_range.bit_offset = base_byte_offset * 8;
+		bit_range.width = __builtin_popcountll(mask_val);
+		bit_range.valid = true;
+
+		return bit_range;
+	}
+
+	if (op_code == Instruction::Or) {
+		auto *or_inst = binary_inst;
+		auto *rhs_const = dyn_cast<ConstantInt>(or_inst->getOperand(1));
+		auto *and_inst = dyn_cast<BinaryOperator>(or_inst->getOperand(0));
+		if (!rhs_const || !and_inst) {
+			return bit_range;
+		}
+		if (and_inst->getOpcode() != Instruction::And) {
+			return bit_range;
+		}
+
+		auto *mask_const = dyn_cast<ConstantInt>(and_inst->getOperand(1));
+		if (!mask_const) {
+			return bit_range;
+		}
+		uint64_t bitwidth = mask_const->getBitWidth();
+		uint64_t mask_val = mask_const->getZExtValue();
+		uint64_t full_mask = (bitwidth == 64) ? ~0ULL : ((1ULL << bitwidth) - 1);
+		uint64_t bitmask = (~mask_val) & full_mask;
+		if (bitmask == 0) {
+			return bit_range;
+		}
+
+		uint64_t shift_val = __builtin_ctzll(bitmask);
+		uint64_t width = __builtin_popcountll(bitmask);
+
+		bit_range.bit_offset = base_byte_offset * 8 + shift_val;
+		bit_range.width = width;
+		bit_range.valid = true;
+
+		return bit_range;
+	}
+
+	return bit_range;
+}*/
+
+int64_t getStructOffset(GetElementPtrInst *gep) {
+	Module *mod = gep->getFunction()->getParent();
+	const DataLayout &DL = mod->getDataLayout();
+	auto address_space = gep->getPointerAddressSpace();
+	auto bit_width = DL.getIndexSizeInBits(address_space);
+	APInt offset(bit_width, false);
+	if (!gep->accumulateConstantOffset(DL, offset)) {
+		return INT64_MIN;
+	}
+	return offset.getSExtValue();
+}
+
+

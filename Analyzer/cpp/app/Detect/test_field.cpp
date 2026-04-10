@@ -12,29 +12,41 @@
 #include "AliasAnalysis/TypeGraph.h"
 #include "AliasAnalysis/Steensgaard.h"
 #include "Concurrency/RaceDetector/LockCollector.h"
+#include "Utils/IROperations.h"
+
+#include "llvm/IR/Instructions.h"
 
 using namespace std;
+using namespace llvm;
 
 static void analyze(PathMgr *path_mgr, ModPack *mod_pack) {
-	DBMgr *db_mgr = new DBMgr(path_mgr->getRaceDBPath());
-	IntraAcycleCFG *intra_acfg = new IntraAcycleCFG(mod_pack);
-	intra_acfg->build();
 	TypeGraph *type_graph = new TypeGraph(mod_pack);
 	type_graph->analyze();
-	//type_graph->dumpSvg("tg.svg");
-	Steensgaard *steen = new Steensgaard(mod_pack);
-	steen->build();
-	steen->dumpSvg("alias.svg");
-	LockAPI *lock_api = new LockAPI(path_mgr, steen);
-	LockCollector *lock_collector = new LockCollector(mod_pack, path_mgr, 
-							intra_acfg, lock_api, steen, type_graph, db_mgr);
-	lock_collector->collect();
-	delete intra_acfg;
-	delete db_mgr;
+	for (int mod_idx = 0; mod_idx < mod_pack->getNumMgrs(); mod_idx++) {
+		ModMgr *mod_mgr = mod_pack->getMgr(mod_idx);
+		Module *mod = mod_mgr->getMod();
+		for (auto &func : *mod) {
+			for (auto &blk : func) {
+				for (auto &inst : blk) {
+					if (auto *store_inst = dyn_cast<StoreInst>(&inst)) {
+						auto *ptr = store_inst->getPointerOperand();
+						auto *val = store_inst->getValueOperand();
+
+						auto *gep = dyn_cast<GetElementPtrInst>(ptr);
+						if (!gep) {
+							continue;
+						}
+						cout << val2str(gep) << endl;
+						uint64_t offset = type_graph->getStructOffset(gep);
+						cout << offset << endl;
+						BitRange br = type_graph->parseBitRange(val, offset);
+						cout << br.bit_offset << "  " << br.width << "  " << br.valid << endl;
+					}
+				}
+			}
+		}
+	}
 	delete type_graph;
-	delete steen;
-	delete lock_api;
-	delete lock_collector;
 }
 
 int main(int argc, char *argv[]) {

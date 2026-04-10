@@ -51,9 +51,9 @@ vector<LinkRow> LinkMgr::selectAll() {
 	}
 	while (sqlite3_step(stmt) == SQLITE_ROW) {
 		LinkRow row;
-		row.target_file = get_column_text(stmt, 0);
-		row.link_list = get_column_text(stmt, 1);
-		row.ir_list = get_column_text(stmt, 2);
+		row.target_file = get_column_text(stmt, 1);
+		row.link_list = get_column_text(stmt, 2);
+		row.ir_list = get_column_text(stmt, 3);
 
 		results.push_back(row);
 	}

@@ -18,7 +18,12 @@ struct ValPathStep {
 std::vector<ValPathStep> getValPath(llvm::Value *val);
 std::pair<llvm::Value *, std::vector<int> > getOffsetValPath(llvm::Value *val);
 
+llvm::DIType *stripDITypedef(llvm::DIType *ditype);
+
 llvm::DIVariable *getDbgVar(llvm::Value *val);
+std::string getTypeName(llvm::Value *val);
+std::string getVarName(llvm::Value *val);
+
 std::string getSourcePath(llvm::Module *mod);
 
 std::string val2str(llvm::Value *val);
@@ -26,5 +31,7 @@ std::string dbg2str(llvm::Metadata *MD, llvm::Module *mod, llvm::Function *func 
 
 bool isDbgCall(llvm::Instruction *inst);
 bool isConstant(llvm::Value *val);
+
+int64_t getStructOffset(llvm::GetElementPtrInst *gep);
 
 #endif

@@ -129,7 +129,7 @@ std::string TypeNode::toDotNode(size_t id) {
 	node_str += "</TD></TR>";
 
 	// blank line
-    node_str += "<TR><TD></TD></TR>";
+	node_str += "<TR><TD></TD></TR>";
 
 	// alias type names
 	for (auto &alias : aliased_type_names) {
@@ -515,6 +515,107 @@ string TypeGraph::getFieldPath(Value *val, vector<int> &offset_vec) {
 	return field_path;
 }
 
+BitRange TypeGraph::parseBitRange(Value *val, uint64_t base_byte_offset) {
+	BitRange bit_range;
+
+	while (isa<CastInst>(val)) {
+		val = cast<CastInst>(val)->getOperand(0);
+	}
+
+	auto binary_inst = dyn_cast<BinaryOperator>(val);
+	if (!binary_inst) {
+		return bit_range;
+	}
+	int op_code = binary_inst->getOpcode();
+
+	if (op_code == Instruction::And) {
+		auto *and_inst = binary_inst;
+
+		auto *mask_const = dyn_cast<ConstantInt>(and_inst->getOperand(1));
+		if (!mask_const) {
+			return bit_range;
+		}
+		Value *lhs = and_inst->getOperand(0);
+
+		unsigned bw = mask_const->getBitWidth();
+		uint64_t full_mask = (bw == 64) ? ~0ULL : ((1ULL << bw) - 1);
+		uint64_t mask_val = mask_const->getZExtValue() & full_mask;
+
+		if (auto *shift_inst = dyn_cast<BinaryOperator>(lhs)) {
+
+			if (shift_inst->getOpcode() == Instruction::LShr ||
+				shift_inst->getOpcode() == Instruction::AShr) {
+
+				auto *shift_const = dyn_cast<ConstantInt>(shift_inst->getOperand(1));
+				if (!shift_const) {
+					return bit_range;
+				}
+
+				uint64_t shift_val = shift_const->getZExtValue();
+
+				bit_range.bit_offset = base_byte_offset * 8 + shift_val;
+				bit_range.width = __builtin_popcountll(mask_val);
+				bit_range.valid = true;
+
+				return bit_range;
+			}
+		}
+
+		bit_range.bit_offset = base_byte_offset * 8;
+		bit_range.width = __builtin_popcountll(mask_val);
+		bit_range.valid = true;
+
+		return bit_range;
+	}
+
+	if (op_code == Instruction::Or) {
+		auto *or_inst = binary_inst;
+		auto *rhs_const = dyn_cast<ConstantInt>(or_inst->getOperand(1));
+		auto *and_inst = dyn_cast<BinaryOperator>(or_inst->getOperand(0));
+		if (!rhs_const || !and_inst) {
+			return bit_range;
+		}
+		if (and_inst->getOpcode() != Instruction::And) {
+			return bit_range;
+		}
+
+		auto *mask_const = dyn_cast<ConstantInt>(and_inst->getOperand(1));
+		if (!mask_const) {
+			return bit_range;
+		}
+		uint64_t bitwidth = mask_const->getBitWidth();
+		uint64_t mask_val = mask_const->getZExtValue();
+		uint64_t full_mask = (bitwidth == 64) ? ~0ULL : ((1ULL << bitwidth) - 1);
+		uint64_t bitmask = (~mask_val) & full_mask;
+		if (bitmask == 0) {
+			return bit_range;
+		}
+
+		uint64_t shift_val = __builtin_ctzll(bitmask);
+		uint64_t width = __builtin_popcountll(bitmask);
+
+		bit_range.bit_offset = base_byte_offset * 8 + shift_val;
+		bit_range.width = width;
+		bit_range.valid = true;
+
+		return bit_range;
+	}
+
+	return bit_range;
+}
+
+int64_t TypeGraph::getStructOffset(GetElementPtrInst *gep) {
+	Module *mod = gep->getFunction()->getParent();
+	const DataLayout &DL = mod->getDataLayout();
+	auto address_space = gep->getPointerAddressSpace();
+	auto bit_width = DL.getIndexSizeInBits(address_space);
+	APInt offset(bit_width, false);
+	if (!gep->accumulateConstantOffset(DL, offset)) {
+		return INT64_MIN;
+	}
+	return offset.getSExtValue();
+}
+
 void TypeGraph::analyze() {
 	for (int mod_i = 0 ; mod_i < mod_pack->getNumMgrs(); mod_i++) {
 		analyzing_mod_mgr = mod_pack->getMgr(mod_i);
@@ -582,7 +683,7 @@ void TypeGraph::dumpDot(string dot_file) {
 		) << "\n";
 	}
 
-    ofs << "}\n";
+	ofs << "}\n";
 
 	ofs.close();
 }

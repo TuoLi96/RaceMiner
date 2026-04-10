@@ -9,9 +9,17 @@
 
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/BinaryFormat/Dwarf.h"
+#include "llvm/IR/Instructions.h"
 
 #include "Manager/ModMgr/ModMgr.h"
 #include "Manager/ModMgr/ModPack.h"
+
+struct BitRange {
+	uint64_t bit_offset;
+	uint64_t width;
+	bool valid;
+	BitRange() : bit_offset(0), width(0), valid(false) {}
+};
 
 class TypeEdge;
 
@@ -101,6 +109,10 @@ private:
 	void handleMod(llvm::Module *mod);
 	
 	std::string getFieldPath(llvm::Value *val, std::vector<int> &offset);
+
+public: // Temp for debug
+	BitRange parseBitRange(llvm::Value *val, uint64_t base_byte_offset);
+	int64_t getStructOffset(llvm::GetElementPtrInst *gep);
 
 public:
 	void analyze();
