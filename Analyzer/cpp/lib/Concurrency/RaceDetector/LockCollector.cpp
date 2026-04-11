@@ -77,6 +77,9 @@ vector<string> LockCollector::getAccessPath(Value *lock_val,
 		unlock_field_path = unlock_anchor_field_path.second;
 		access_field_path = access_anchor_field_path.second;
 	}
+	if (lock_field_path == "" || unlock_field_path == "" || access_field_path == "") {
+		return {};
+	}
 	AGNode *common_root_node = ag->getAGNode(common_root);
 	string root_type = common_root_node->getTypeName();
 	if (root_type == "") {
@@ -93,6 +96,7 @@ void LockCollector::handleInst(CallInst *lock_inst, CallInst *unlock_inst, Instr
 	Value *lock_val = lock_api->getLockVal(lock_inst);
 	Value *unlock_val = lock_api->getUnlockVal(unlock_inst);
 	if (BinaryOperator *binary_inst = dyn_cast<BinaryOperator>(access_inst)) {
+		Function *func = lock_inst->getFunction();
 		for (int op_idx = 0; op_idx < binary_inst->getNumOperands(); op_idx++) {
 			Value *op = binary_inst->getOperand(op_idx);
 			vector<string> access_paths = getAccessPath(lock_val, unlock_val, op);

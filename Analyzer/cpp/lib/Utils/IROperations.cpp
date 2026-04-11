@@ -75,11 +75,14 @@ DIType *stripDITypedef(DIType *ditype) {
 }
 
 static string stripDITypeName(DIType *ditype) {
-	while (auto *di_derive = dyn_cast_or_null<DIDerivedType>(ditype)) {
-		if (!di_derive->getName().empty()) {
-			return di_derive->getName().str();
-		} else {
+	while (ditype) {
+		if (!ditype->getName().empty()) {
+			return ditype->getName().str();
+		}
+		if (auto *di_derive = dyn_cast<DIDerivedType>(ditype)) {
 			ditype = di_derive->getBaseType();
+		} else {
+			break;
 		}
 	}
 	return "";

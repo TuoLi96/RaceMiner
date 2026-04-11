@@ -109,7 +109,7 @@ void Steensgaard::handleGep(GetElementPtrInst *gep_inst) {
 	}
 }
 
-void Steensgaard::handleCast(BitCastInst *cast_inst) {
+void Steensgaard::handleCast(CastInst *cast_inst) {
 	Value *ori_val = cast_inst->getOperand(0);
 	if (isa<Constant>(ori_val)) {
 		return;
@@ -131,7 +131,7 @@ void Steensgaard::handleInst(Instruction *inst) {
 		handleStore(store_inst);
 	} else if (GetElementPtrInst *gep_inst = dyn_cast<GetElementPtrInst>(inst)) {
 		handleGep(gep_inst);
-	} else if (BitCastInst *cast_inst = dyn_cast<BitCastInst>(inst)) {
+	} else if (CastInst *cast_inst = dyn_cast<CastInst>(inst)) {
 		handleCast(cast_inst);
 	} else {
 		// TODO: Handle other instructions.

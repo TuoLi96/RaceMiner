@@ -129,12 +129,8 @@ pair<Value *, string> ModMgr::getAnchorFieldPath(Value *val) {
 			return {NULL, ""};
 		}
 		string field = field_find->second;
-		if (gep_idx != 0) {
-			field_path += field;
-			field_path += ".";
-		} else {
-			field_path += field;
-		}
+		field_path += ".";
+		field_path += field;
 	}
 	return {val, field_path};
 }

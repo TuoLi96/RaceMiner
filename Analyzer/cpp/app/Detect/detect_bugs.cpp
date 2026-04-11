@@ -24,7 +24,8 @@ static void analyze(PathMgr *path_mgr, ModPack *mod_pack) {
 	//type_graph->dumpSvg("tg.svg");
 	Steensgaard *steen = new Steensgaard(mod_pack);
 	steen->build();
-	steen->dumpSvg("alias.svg");
+	//steen->dumpSvg("alias.svg");
+	//steen->dumpDot("alias.dot");
 	LockAPI *lock_api = new LockAPI(path_mgr, steen);
 	LockCollector *lock_collector = new LockCollector(mod_pack, path_mgr, 
 							intra_acfg, lock_api, steen, type_graph, db_mgr);
@@ -52,11 +53,8 @@ int main(int argc, char *argv[]) {
 		size_t total = link_rows.size();
 		size_t link_idx = 1;
 		for (auto link_row : link_rows) {
-			//cout << "Analyzing(" << link_idx << "/" << total << 
-			//				"): " << link_row.target_file << endl;
-			/*if (link_row.target_file.find("lib/tests") == string::npos) {
-				continue;
-			}*/
+			cout << "Analyzing(" << link_idx << "/" << total << 
+							"): " << link_row.target_file << endl;
 			string ir_list = link_row.ir_list;
 			istringstream iss(ir_list);
 			vector<string> ir_vec;
@@ -66,13 +64,10 @@ int main(int argc, char *argv[]) {
 			}
 			ModPack *mod_pack = new ModPack();
 			for (auto ir_file : ir_vec) {
-				if (ir_file.find("crypto/keyring.ll") == string::npos) {
-					continue;
-				}
-				cout << ir_file << endl;
 				mod_pack->push(ir_file);
+				analyze(path_mgr, mod_pack);
 			}
-			analyze(path_mgr, mod_pack);
+			//analyze(path_mgr, mod_pack);
 			delete mod_pack;
 			link_idx++;
 		}

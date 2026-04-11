@@ -26,7 +26,7 @@ private:
 	void handleLoad(llvm::LoadInst *load_inst);
 	void handleStore(llvm::StoreInst *store_inst);
 	void handleGep(llvm::GetElementPtrInst *gep_inst);
-	void handleCast(llvm::BitCastInst *cast_inst);
+	void handleCast(llvm::CastInst *cast_inst);
 	void handleInst(llvm::Instruction *inst);
 	void handleBlock(llvm::BasicBlock &blk);
 	void handleFunc(llvm::Function &func);
