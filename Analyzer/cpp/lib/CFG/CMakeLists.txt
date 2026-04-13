@@ -1,4 +1,5 @@
 add_library(CFG
+	CG.cpp
     CFG.cpp
 	IntraCFG.cpp
 	IntraAcycleCFG.cpp

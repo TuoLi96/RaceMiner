@@ -1,5 +1,5 @@
-#ifndef _STEENSGAARD_H_
-#define _STEENSGAARD_H_
+#ifndef _STEENSGAARD_INTER_H_
+#define _STEENSGAARD_INTER_H_
 
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
@@ -8,26 +8,23 @@
 
 #include "Manager/ModMgr/ModPack.h"
 #include "AliasAnalysis/AliasGraph.h"
+#include "AliasAnalysis/Steensgaard.h"
 #include "Utils/UnionFind.h"
 
-class Steensgaard : public AliasGraph {
+class SteensgaardInter : public Steensgaard {
 private:
 	ModPack *mod_pack;
 	ModMgr *analyzing_mod_mgr;
+
+protected:
 	UnionFind<AGNode *> uf;
 
 public:
-	Steensgaard(ModPack *mod_pack);
-	virtual ~Steensgaard();
+	SteensgaardInter(ModPack *mod_pack);
+	~SteensgaardInter();
 
 private:
-	void unify(AGNode *agnode1, AGNode *agnode2);
-
-	void handleLoad(llvm::LoadInst *load_inst);
-	void handleStore(llvm::StoreInst *store_inst);
-	void handleGep(llvm::GetElementPtrInst *gep_inst);
-	void handleCast(llvm::CastInst *cast_inst);
-	void handleInst(llvm::Instruction *inst);
+	void handleCall(llvm::CallInst *call_inst);
 	void handleBlock(llvm::BasicBlock &blk);
 	void handleFunc(llvm::Function &func);
 	void handleMod(llvm::Module &mod);

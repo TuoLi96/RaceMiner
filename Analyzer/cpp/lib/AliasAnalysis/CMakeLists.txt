@@ -10,6 +10,7 @@ add_library(AliasAnalysis
     TypeGraph.cpp
 	AliasGraph.cpp
 	Steensgaard.cpp
+	SteensgaardInter.cpp
 )
 
 target_link_libraries(AliasAnalysis

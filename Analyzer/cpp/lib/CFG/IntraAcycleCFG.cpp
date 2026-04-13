@@ -27,36 +27,6 @@ IntraAcycleCFG::~IntraAcycleCFG() {
 	// Need to do nothing at present.
 }
 
-/*void IntraAcycleCFG::breakRemainCycle() {
-	auto &node_set = getNodeSet();
-	unordered_map<CFGNode *, int> color;
-	for (auto node : node_set) {
-		color[node] = 0;
-	}
-	function<void(CFGNode*)> DFS = [&](CFGNode *u) {
-		color[u] = 1;
-		vector<CFGEdge *> edges;
-		for (int out_idx = 0; out_idx < u->getNumOuts(); out_idx++) {
-			edges.push_back(u->getOutEdge(out_idx));
-		}
-		for (auto edge : edges) {
-			CFGNode *v = edge->getDst();
-			if (color[v] == 0) {
-				DFS(v);
-			} else if (color[v] == 1) {
-				deleteEdge(edge);
-			}
-		}
-		color[u] = 2;
-	};
-
-	for (auto node : node_set) {
-		if (color[node] == 0) {
-			DFS(node);
-		}
-	}
-}*/
-
 void IntraAcycleCFG::breakRemainCycle() {
 	struct Frame {
 		CFGNode *node;
