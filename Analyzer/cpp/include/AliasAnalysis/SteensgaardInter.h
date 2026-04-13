@@ -7,6 +7,7 @@
 #include "llvm/IR/Instructions.h"
 
 #include "Manager/ModMgr/ModPack.h"
+#include "CFG/CG.h"
 #include "AliasAnalysis/AliasGraph.h"
 #include "AliasAnalysis/Steensgaard.h"
 #include "Utils/UnionFind.h"
@@ -15,12 +16,10 @@ class SteensgaardInter : public Steensgaard {
 private:
 	ModPack *mod_pack;
 	ModMgr *analyzing_mod_mgr;
-
-protected:
-	UnionFind<AGNode *> uf;
+	CG *cg;
 
 public:
-	SteensgaardInter(ModPack *mod_pack);
+	SteensgaardInter(ModPack *mod_pack, CG *cg);
 	~SteensgaardInter();
 
 private:
@@ -28,8 +27,6 @@ private:
 	void handleBlock(llvm::BasicBlock &blk);
 	void handleFunc(llvm::Function &func);
 	void handleMod(llvm::Module &mod);
-
-protected:
 	void handlePack();
 
 public:

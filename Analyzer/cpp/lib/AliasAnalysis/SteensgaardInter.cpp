@@ -1,4 +1,5 @@
 #include "AliasAnalysis/SteensgaardInter.h"
+#include "CFG/CG.h"
 #include "Constants.h"
 #include "Utils/IROperations.h"
 
@@ -14,9 +15,10 @@ using namespace llvm;
  * Implementation of SteensgaardInter
  */
 
-SteensgaardInter::SteensgaardInter(ModPack *mod_pack) : Steensgaard(mod_pack) {
+SteensgaardInter::SteensgaardInter(ModPack *mod_pack, CG *cg) : Steensgaard(mod_pack) {
 	this->mod_pack = mod_pack;
 	this->analyzing_mod_mgr = NULL;
+	this->cg = cg;
 	Steensgaard::handlePack();
 }
 
@@ -25,6 +27,21 @@ SteensgaardInter::~SteensgaardInter() {
 }
 
 void SteensgaardInter::handleCall(CallInst *call_inst) {
+	Function *callee = cg->getCallee(call_inst);
+	if (callee == NULL || callee->isVarArg()) {
+		return;
+	}
+	if (callee->arg_size() != call_inst->arg_size()) {
+		return;
+	}
+	auto param_it = callee->arg_begin();
+	auto arg_it = call_inst->arg_begin();
+	for ( ; param_it != callee->arg_end() && arg_it != call_inst->arg_end(); 
+					param_it++, arg_it++) {
+		AGNode *param_node = getAGNode(&(*param_it));
+		AGNode *arg_node = getAGNode(*arg_it);
+		uf.unite(param_node, arg_node);
+	}
 }
 
 void SteensgaardInter::handleBlock(BasicBlock &blk) {

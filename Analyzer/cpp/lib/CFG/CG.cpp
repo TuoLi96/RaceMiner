@@ -189,8 +189,10 @@ void CG::createNodeForMod(Module &mod) {
 	for (auto &func : mod) {
 		if (!func.isDeclaration()) {
 			createCGNode(&func);
-			string func_name = func.getName().str();
-			name2func[func_name] = &func;
+			if (!func.hasInternalLinkage()) {
+				string func_name = func.getName().str();
+				name2func[func_name] = &func;
+			}
 		}
 	}
 }

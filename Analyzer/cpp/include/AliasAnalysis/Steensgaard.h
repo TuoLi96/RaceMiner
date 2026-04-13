@@ -14,6 +14,8 @@ class Steensgaard : public AliasGraph {
 private:
 	ModPack *mod_pack;
 	ModMgr *analyzing_mod_mgr;
+
+protected:
 	UnionFind<AGNode *> uf;
 
 public:
