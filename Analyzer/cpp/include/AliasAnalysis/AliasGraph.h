@@ -7,6 +7,7 @@
 
 #include "llvm/IR/Value.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/StringMap.h"
 
 #include "Utils/UnionFind.h"
 
@@ -79,6 +80,7 @@ private:
 	std::set<AGNode *> agnode_set;
 	std::set<AGEdge *> agedge_set;
 	llvm::DenseMap<llvm::Value *, AGNode *> val2node;
+	llvm::StringMap<std::set<AGNode *> > type2nodes;
 
 public:
 	AliasGraph();
@@ -102,6 +104,8 @@ public:
 	AGNode *findNearestAncestor(std::vector<llvm::Value *> &vals, bool should_anchor=true);
 	std::vector<AGEdge *> getFieldPathEdges(AGNode *src, AGNode *dst);
 	std::string getFieldPath(AGNode *src, AGNode *dst);
+	std::set<AGNode *> &getNodesOfType(std::string type_name);
+	AGNode *getNodeOfFieldPath(AGNode *base_node, std::string field_path);
 
 	void dumpDot(std::string dot_name);
 	void dumpSvg(std::string svg_name);

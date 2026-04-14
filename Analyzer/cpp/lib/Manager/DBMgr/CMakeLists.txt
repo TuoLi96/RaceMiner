@@ -2,6 +2,7 @@ add_library(DBMgr
     DBMgr.cpp
     TBLMgr.cpp
     LockCollectionMgr.cpp
+    LockUseMgr.cpp
 	LinkMgr.cpp
 )
 

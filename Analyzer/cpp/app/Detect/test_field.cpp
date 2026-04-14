@@ -13,6 +13,7 @@
 #include "AliasAnalysis/Steensgaard.h"
 #include "Concurrency/RaceDetector/LockCollector.h"
 #include "Utils/IROperations.h"
+#include "Utils/StrOperations.h"
 
 #include "llvm/IR/Instructions.h"
 
@@ -52,7 +53,7 @@ static void analyze(PathMgr *path_mgr, ModPack *mod_pack) {
 int main(int argc, char *argv[]) {
 	PathMgr *path_mgr = new PathMgr();
 	if (argc >= 2) {
-		ModPack *mod_pack = new ModPack();
+		ModPack *mod_pack = new ModPack("non.a");
 		string lr_path = string(argv[1]);
 		mod_pack->push(lr_path);
 		analyze(path_mgr, mod_pack);
@@ -70,19 +71,10 @@ int main(int argc, char *argv[]) {
 				continue;
 			}*/
 			string ir_list = link_row.ir_list;
-			istringstream iss(ir_list);
-			vector<string> ir_vec;
-			string ir_file;
-			while (iss >> ir_file) {
-				ir_vec.push_back(ir_file);
-			}
-			ModPack *mod_pack = new ModPack();
-			for (auto ir_file : ir_vec) {
-				if (ir_file.find("crypto/keyring.ll") == string::npos) {
-					continue;
-				}
-				cout << ir_file << endl;
-				mod_pack->push(ir_file);
+			vector<string> ir_vec = splitStr(ir_list, " ");
+			ModPack *mod_pack = new ModPack(link_row.target_file);
+			for (size_t ir_idx = 0; ir_idx < ir_vec.size(); ir_idx++) {
+				mod_pack->push(ir_vec[ir_idx]);
 			}
 			analyze(path_mgr, mod_pack);
 			delete mod_pack;

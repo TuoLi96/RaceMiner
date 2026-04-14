@@ -1,6 +1,7 @@
 #include "AliasAnalysis/AliasGraph.h"
 #include "Constants.h"
 #include "Utils/IROperations.h"
+#include "Utils/StrOperations.h"
 
 #include <queue>
 #include <unordered_map>
@@ -238,6 +239,7 @@ AGNode *AliasGraph::getAGNode(Value *val) {
 		string var_name = getVarName(val);
 		new_agnode->setAnchor(val, var_name);
 		new_agnode->setTypeName(type_name);
+		type2nodes[type_name].insert(new_agnode);
 	}
 
 	return new_agnode;
@@ -326,7 +328,12 @@ void AliasGraph::compact(UnionFind<AGNode *> &uf) {
 		}
 	}
 
-	// Create new AGNode.
+	// Create new AGNode and AGEdge.
+	set<AGNode *> new_agnode_set;
+	set<AGEdge *> new_agedge_set;
+	llvm::DenseMap<llvm::Value *, AGNode *> new_val2node;
+	llvm::StringMap<std::set<AGNode *> > new_type2nodes;
+
 	unordered_map<AGNode *, AGNode *> rep2newnode;
 
 	for (AGNode *old_node : agnode_set) {
@@ -346,13 +353,9 @@ void AliasGraph::compact(UnionFind<AGNode *> &uf) {
 		}
 		if (new_node->getTypeName() == "" && old_node->getTypeName() != "") {
 			new_node->setTypeName(old_node->getTypeName());
+			new_type2nodes[new_node->getTypeName()].insert(new_node);
 		}
 	}
-
-	// Create new AGNode and AGEdge.
-	set<AGNode *> new_agnode_set;
-	set<AGEdge *> new_agedge_set;
-	llvm::DenseMap<llvm::Value *, AGNode *> new_val2node;
 
 	for (auto &[rep, new_node] : rep2newnode) {
 		new_agnode_set.insert(new_node);
@@ -426,6 +429,7 @@ void AliasGraph::compact(UnionFind<AGNode *> &uf) {
 	agedge_set = std::move(new_agedge_set);
 	agnode_set = std::move(new_agnode_set);
 	val2node = std::move(new_val2node);
+	type2nodes = std::move(new_type2nodes);
 }
 
 bool AliasGraph::isAlias(Value *val1, Value *val2) {
@@ -537,6 +541,42 @@ string AliasGraph::getFieldPath(AGNode *src, AGNode *dst) {
 		field_path += field;
 	}
 	return field_path;
+}
+
+set<AGNode *> &AliasGraph::getNodesOfType(std::string type_name) {
+	auto anchors_find = type2nodes.find(type_name);
+	if (anchors_find != type2nodes.end()) {
+		return anchors_find->second;
+	} else {
+		set<AGNode *> empty_nodes;
+		type2nodes[type_name] = empty_nodes; 
+		return type2nodes[type_name];
+	}
+}
+
+AGNode *AliasGraph::getNodeOfFieldPath(AGNode *base_node, string field_path) {
+	vector<string> fields = splitStr(field_path, ".");
+	AGNode *ret_node = base_node;
+	set<AGNode *> agnode_set;
+	for (size_t field_idx = 0; field_idx < fields.size(); field_idx++) {
+		while (ret_node) {
+			if (agnode_set.find(ret_node) != agnode_set.end()) {
+				return NULL;
+			} else {
+				agnode_set.insert(ret_node);
+			}
+			AGNode *succ_node = ret_node->getOutNode(fields[field_idx]);
+			if (succ_node) {
+				ret_node = succ_node;
+				break;
+			}
+			ret_node = ret_node->getOutNode(REF_FIELD);
+			if (ret_node == NULL) {
+				return NULL;
+			}
+		}
+	}
+	return ret_node;
 }
 
 void AliasGraph::dumpDot(string dot_file) {

@@ -1,4 +1,5 @@
 add_library(Utils
+	StrOperations.cpp
     IROperations.cpp
     DBOperations.cpp
 )

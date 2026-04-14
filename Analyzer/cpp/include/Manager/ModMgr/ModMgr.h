@@ -11,6 +11,8 @@
 
 class ModMgr {
 private:
+	std::string ir_path;
+	std::string src_path;
 	llvm::LLVMContext ctx;
 	llvm::SMDiagnostic err;
 	std::unique_ptr<llvm::Module> owner_ptr;
@@ -28,6 +30,8 @@ private:
 	void collectDIType();
 
 public:
+	std::string &getIrPath();
+	std::string &getSrcPath();
 	llvm::Module *getMod();
 	std::string getFieldOfGep(llvm::GetElementPtrInst *gep_inst);
 	std::pair<llvm::Value *, std::string> getAnchorFieldPath(llvm::Value *val);

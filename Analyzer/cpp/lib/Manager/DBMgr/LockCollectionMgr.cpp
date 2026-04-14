@@ -57,17 +57,47 @@ vector<LockCollectionRow> LockCollectionMgr::selectAll() {
 	}
 	while (sqlite3_step(stmt) == SQLITE_ROW) {
 		LockCollectionRow row;
-		row.file = get_column_text(stmt, 0);
-		row.func = get_column_text(stmt, 1);
-		row.lock_func = get_column_text(stmt, 2);
-		row.lock_var = get_column_text(stmt, 3);
-		row.lock_line = get_column_int(stmt, 4);
-		row.unlock_func = get_column_text(stmt, 5);
-		row.unlock_var = get_column_text(stmt, 6);
-		row.unlock_line = get_column_int(stmt, 7);
-		row.access_var = get_column_text(stmt, 8);;
-		row.access_line = get_column_int(stmt, 9);
-		row.access_type = get_column_text(stmt, 10);
+		row.file = get_column_text(stmt, 1);
+		row.func = get_column_text(stmt, 2);
+		row.lock_func = get_column_text(stmt, 3);
+		row.lock_var = get_column_text(stmt, 4);
+		row.lock_line = get_column_int(stmt, 5);
+		row.unlock_func = get_column_text(stmt, 6);
+		row.unlock_var = get_column_text(stmt, 7);
+		row.unlock_line = get_column_int(stmt, 8);
+		row.access_var = get_column_text(stmt, 9);;
+		row.access_line = get_column_int(stmt, 10);
+		row.access_type = get_column_text(stmt, 11);
+
+		results.push_back(row);
+	}
+
+	db_mgr->finalizeQuery(stmt);
+	return results;
+}
+
+vector<LockCollectionRow> LockCollectionMgr::selectFile(string src_file) {
+	string tbl_select_file_lock_collection = path_mgr->getTblSelectFileLockCollection();
+	string tbl_select_file_lock_collection_sql = loadSql(tbl_select_file_lock_collection);
+	vector<LockCollectionRow> results;
+
+	sqlite3_stmt * stmt = db_mgr->prepareQuery(tbl_select_file_lock_collection_sql, {src_file});
+	if (!stmt) {
+		return results;
+	}
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		LockCollectionRow row;
+		row.file = get_column_text(stmt, 1);
+		row.func = get_column_text(stmt, 2);
+		row.lock_func = get_column_text(stmt, 3);
+		row.lock_var = get_column_text(stmt, 4);
+		row.lock_line = get_column_int(stmt, 5);
+		row.unlock_func = get_column_text(stmt, 6);
+		row.unlock_var = get_column_text(stmt, 7);
+		row.unlock_line = get_column_int(stmt, 8);
+		row.access_var = get_column_text(stmt, 9);;
+		row.access_line = get_column_int(stmt, 10);
+		row.access_type = get_column_text(stmt, 11);
 
 		results.push_back(row);
 	}

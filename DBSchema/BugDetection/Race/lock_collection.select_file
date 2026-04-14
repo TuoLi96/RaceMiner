@@ -1,0 +1,1 @@
+SELECT * FROM lock_collection WHERE file = ?;

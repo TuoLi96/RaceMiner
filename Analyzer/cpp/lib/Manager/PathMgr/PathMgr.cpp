@@ -81,6 +81,24 @@ void PathMgr::createDBIfNotExist() {
 	fs::path tbl_select_lock_collection = tbl_race_root / "lock_collection.select";
 	createDirIfNotExist(tbl_select_lock_collection);
 	path_json["tbl_select_lock_collection"] = tbl_select_lock_collection.string();
+	fs::path tbl_select_file_lock_collection = tbl_race_root / "lock_collection.select_file";
+	createDirIfNotExist(tbl_select_file_lock_collection);
+	path_json["tbl_select_file_lock_collection"] = tbl_select_file_lock_collection.string();
+
+	fs::path tbl_create_lock_use = tbl_race_root / "lock_use.create";
+	createDirIfNotExist(tbl_create_lock_use);
+	path_json["tbl_create_lock_use"] = tbl_create_lock_use.string();
+	fs::path tbl_insert_lock_use = tbl_race_root / "lock_use.insert";
+	createDirIfNotExist(tbl_insert_lock_use);
+	path_json["tbl_insert_lock_use"] = tbl_insert_lock_use.string();
+	fs::path tbl_select_lock_use = tbl_race_root / "lock_use.select";
+	createDirIfNotExist(tbl_select_lock_use);
+	path_json["tbl_select_lock_use"] = tbl_select_lock_use.string();
+	fs::path tbl_select_file_lock_use = tbl_race_root / "lock_use.select_file";
+	createDirIfNotExist(tbl_select_file_lock_use);
+	path_json["tbl_select_file_lock_use"] = tbl_select_file_lock_use.string();
+
+
 
 	/** DBSchema/SourceInfo */
 	fs::path tbl_source_info_root = db_schema_root / "SourceInfo";
@@ -98,10 +116,22 @@ void PathMgr::createDBIfNotExist() {
 
 }
 
-void PathMgr::createAPIIfNotExist() {
+void PathMgr::createConfigIfNotExist() {
 	fs::path api_lock_path = work_root / "config" / "API" / "LockAPI";
 	path_json["api_lock_path"] = api_lock_path.string();
 	createDirIfNotExist(api_lock_path);
+}
+
+void PathMgr::createResultIfNotExist() {
+	/* Results */
+	fs::path result_path = work_root / "Results";
+
+	/** Results/Race */
+	fs::path result_race_path = result_path / "Race";
+	/*** Results/Race/LockUse */
+	fs::path result_race_lock_use_path = result_race_path / "LockUse.json";
+	path_json["result_race_lock_use_path"] = result_race_lock_use_path.string();
+	createDirIfNotExist(result_race_lock_use_path);
 }
 
 void PathMgr::createIfNotExist() {
@@ -111,8 +141,9 @@ void PathMgr::createIfNotExist() {
 	}
 	fs::create_directories(path_path.parent_path());
 	
-	createAPIIfNotExist();
 	createDBIfNotExist();
+	createConfigIfNotExist();
+	createResultIfNotExist();
 
 	ofstream json_file(path_path.string());
 	json_file << path_json.dump(4);
@@ -144,6 +175,26 @@ string PathMgr::getTblSelectLockCollection() {
 	return path_json["tbl_select_lock_collection"];
 }
 
+string PathMgr::getTblSelectFileLockCollection() {
+	return path_json["tbl_select_file_lock_collection"];
+}
+
+string PathMgr::getTblCreateLockUse() {
+	return path_json["tbl_create_lock_use"];
+}
+
+string PathMgr::getTblInsertLockUse() {
+	return path_json["tbl_insert_lock_use"];
+}
+
+string PathMgr::getTblSelectLockUse() {
+	return path_json["tbl_select_lock_use"];
+}
+
+string PathMgr::getTblSelectFileLockUse() {
+	return path_json["tbl_select_file_lock_use"];
+}
+
 string PathMgr::getCompileDBPath() {
 	return path_json["db_compile"];
 }
@@ -158,4 +209,8 @@ string PathMgr::getTblInsertLink() {
 
 string PathMgr::getTblSelectLink() {
 	return path_json["tbl_select_link"];
+}
+
+string PathMgr::getResultRaceLockUsePath() {
+	return path_json["result_race_lock_use_path"];
 }

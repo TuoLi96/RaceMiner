@@ -332,5 +332,3 @@ int64_t getStructOffset(GetElementPtrInst *gep) {
 	}
 	return offset.getSExtValue();
 }
-
-

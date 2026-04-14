@@ -34,6 +34,7 @@ public:
 	bool insert(LockCollectionRow &row);
 	bool insertBatch(std::vector<LockCollectionRow> &row_vec);
 	std::vector<LockCollectionRow> selectAll();
+	std::vector<LockCollectionRow> selectFile(std::string src_file);
 };
 
 #endif

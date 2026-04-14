@@ -20,7 +20,8 @@ private:
 
 	void createDirIfNotExist(std::filesystem::path path);
 	void createDBIfNotExist();
-	void createAPIIfNotExist();
+	void createConfigIfNotExist();
+	void createResultIfNotExist();
 	void createIfNotExist();
 	void load();
 
@@ -31,12 +32,21 @@ public:
 	std::string getTblCreateLockCollection();
 	std::string getTblInsertLockCollection();
 	std::string getTblSelectLockCollection();
+	std::string getTblSelectFileLockCollection();
+
+	std::string getTblCreateLockUse();
+	std::string getTblInsertLockUse();
+	std::string getTblSelectLockUse();
+	std::string getTblSelectFileLockUse();
+
 
 	std::string getCompileDBPath();
 	std::string getTblCreateLink();
 	std::string getTblInsertLink();
 	std::string getTblSelectLink();
 
+
+	std::string getResultRaceLockUsePath();
 };
 
 #endif

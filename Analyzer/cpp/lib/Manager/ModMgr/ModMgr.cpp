@@ -11,6 +11,9 @@ using namespace std;
 using namespace llvm;
 
 ModMgr::ModMgr(string ir_path) {
+	this->ir_path = ir_path;
+	// FIXME: Get real srouce path.
+	this->src_path = "";
 	owner_ptr = parseIRFile(ir_path, err, ctx);
 	if (!owner_ptr) {
 		llvm::errs() << "Error parsing IR file: " << ir_path << "\n";
@@ -90,6 +93,14 @@ void ModMgr::collectDIType() {
 			}
 		}
 	}
+}
+
+string &ModMgr::getIrPath() {
+	return ir_path;
+}
+
+string &ModMgr::getSrcPath() {
+	return src_path;
 }
 
 Module *ModMgr::getMod() {

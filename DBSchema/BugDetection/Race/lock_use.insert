@@ -1,0 +1,11 @@
+INSERT INTO lock_use (
+	target_file,
+	lock_var,
+	access_var,
+	access_count
+) VALUES (?, ?, ?, ?)
+ON CONFLICT (
+	target_file,
+	lock_var,
+	access_var
+) DO NOTHING;
