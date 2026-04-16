@@ -85,6 +85,10 @@ CGEdge::CGEdge(CGNode *src, CGNode *dst, CallInst *call_inst, CGEdge::EdgeType e
 	this->edge_type = edge_type;
 }
 
+CGEdge::~CGEdge() {
+	// Need to do nothing at present.
+}
+
 CGNode *CGEdge::getSrc() {
 	return src;
 }
@@ -250,6 +254,14 @@ void CG::createEdgeForPack() {
 void CG::build() {
 	createNodeForPack();
 	createEdgeForPack();
+}
+
+set<CGNode *> &CG::getNodeSet() {
+	return node_set;
+}
+
+set<CGEdge *> &CG::getEdgeSet() {
+	return edge_set;
 }
 
 CGNode *CG::getCGNode(Function *func) {

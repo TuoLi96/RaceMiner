@@ -79,13 +79,6 @@ private:
 	std::set<CGNode *> entry_set;
 
 private:
-	void createCGNode(llvm::Function *func);
-	void createCGEdge(llvm::Function *src_func, llvm::Function *dst_func,
-						llvm::CallInst *call_inst, CGEdge::EdgeType edge_type);
-	void collectEntry();
-	void deleteEdge(CGEdge *edge);
-	void deleteEdge(llvm::Function *src_func, llvm::Function *dst_func);
-
 	llvm::Function *getFuncByName(std::string func_name);
 
 	void createNodeForMod(llvm::Module &mod);
@@ -96,13 +89,23 @@ private:
 	void createEdgeForMod(llvm::Module &mod);
 	void createEdgeForPack();
 
+protected:
+	void createCGNode(llvm::Function *func);
+	void createCGEdge(llvm::Function *src_func, llvm::Function *dst_func,
+						llvm::CallInst *call_inst, CGEdge::EdgeType edge_type);
+	void collectEntry();
+	void deleteEdge(CGEdge *edge);
+	void deleteEdge(llvm::Function *src_func, llvm::Function *dst_func);
+
 public:
 	CG(ModPack *mod_pack);
-	~CG();
+	virtual ~CG();
 
 public:
 	void build();
 
+	std::set<CGNode *> &getNodeSet();
+	std::set<CGEdge *> &getEdgeSet();
 	CGNode *getCGNode(llvm::Function *func);
 	CGEdge *getCGEdge(llvm::CallInst *call_inst);
 	llvm::Function *getCallee(llvm::CallInst *call_inst);

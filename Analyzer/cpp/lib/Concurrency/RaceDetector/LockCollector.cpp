@@ -169,7 +169,7 @@ void LockCollector::handleInst(CallInst *lock_inst, CallInst *unlock_inst, Instr
 } 
 
 void LockCollector::handleFunc(Function &func) {	
-	vector<CFGNode *> topo_vec = cfg->getTopoVecOfFunc(&func);
+	vector<CFGNode *> &topo_vec = cfg->getTopoVecOfFunc(&func);
 	vector<CallInst *> lock_set;
 	for (auto node : topo_vec) {
 		Instruction *inst = node->getInst();
